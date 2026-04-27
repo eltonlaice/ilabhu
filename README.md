@@ -1,8 +1,8 @@
 # ilabhu
 
-**Open-source, self-hostable hands-on labs for cloud certification exams — running on your own cloud account.**
+**Hands-on certification labs you run in your own cloud.**
 
-Think [labs.iximiuz.com](https://labs.iximiuz.com), but open source, exam-focused (CKA, CKAD, CKS, RHCSA, ...), and provisioned in *your* AWS / GCP / Azure account.
+Open source. Exam-focused (CKA, CKAD, CKS, RHCSA, ...). Provisioned in your own AWS, GCP or Azure account — no shared sandbox, no subscription.
 
 ---
 
