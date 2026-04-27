@@ -1,0 +1,66 @@
+# ilabhu
+
+**Open-source, self-hostable hands-on labs for cloud certification exams — running on your own cloud account.**
+
+Think [labs.iximiuz.com](https://labs.iximiuz.com), but open source, exam-focused (CKA, CKAD, CKS, RHCSA, ...), and provisioned in *your* AWS / GCP / Azure account.
+
+---
+
+## Why
+
+Preparing for certifications like the CKA or RHCSA requires real environments, not slideware. Existing platforms either:
+
+- charge a recurring subscription (KodeKloud, A Cloud Guru),
+- run on shared infrastructure you can't inspect or extend (Killercoda, iximiuz Labs),
+- or are tied to a specific vendor's cloud.
+
+`ilabhu` is different:
+
+- **Open source** (Apache 2.0). Fork it, self-host it, contribute labs.
+- **Bring your own cloud.** Connect your AWS / GCP / Azure account via short-lived assumed roles. No long-lived keys stored. Labs run on your infra, billed to you, destroyed automatically when the TTL expires.
+- **Exam-mapped content.** Each lab cites the exact exam objective it covers (e.g. *CKA 1.31 — Workloads & Scheduling — configure resource limits*).
+- **Self-hostable.** A single `docker compose up` for individuals; a Kubernetes deploy for teams and training providers.
+
+## Status
+
+Pre-alpha. Not usable yet. Roadmap below.
+
+## How it works
+
+```
+┌────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│  Web UI    │───▶│  Control plane   │───▶│  Terraform      │
+│ (Next.js)  │    │      (Go)        │    │  (your cloud)   │
+└────────────┘    └──────────────────┘    └────────┬────────┘
+                          │                        │
+                          │   AssumeRole / WIF     │
+                          │   (no static keys)     │
+                          ▼                        ▼
+                  ┌──────────────────┐    ┌─────────────────┐
+                  │  Validator       │◀───│  Lab VM(s)      │
+                  │  (kubectl/SSH)   │    │  + ilabhu-agent │
+                  └──────────────────┘    └─────────────────┘
+```
+
+A lab is a versioned directory under `labs/` containing:
+
+- `lab.yaml` — metadata, instructions, tasks, validation rules
+- `terraform/` — a Terraform module that provisions the lab's infrastructure
+
+When a user starts a lab, the control plane assumes a role in the user's cloud account, runs `terraform apply` against the lab module, opens a browser terminal, and runs the validation rules on demand.
+
+## Roadmap
+
+- [ ] Lab manifest schema (`lab.yaml`) v1
+- [ ] First lab: CKA — pod with resource limits (AWS, single-node k3s)
+- [ ] Control plane: assume-role + terraform apply/destroy
+- [ ] Web UI: lab catalog, terminal (xterm.js), task checklist
+- [ ] Validator: kubectl + SSH check kinds
+- [ ] `docker compose` self-host
+- [ ] GCP and Azure adapters
+- [ ] CKAD, CKS, RHCSA lab packs
+- [ ] Lab authoring docs
+
+## License
+
+Apache License 2.0. See [LICENSE](./LICENSE).
