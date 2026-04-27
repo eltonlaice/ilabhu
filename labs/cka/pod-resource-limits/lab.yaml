@@ -1,0 +1,54 @@
+schema_version: 1
+id: cka/pod-resource-limits
+version: 1
+exam: CKA
+exam_objective: "Workloads & Scheduling — Understand the primitives used to create robust, self-healing application deployments (resource limits)."
+title: Pod with resource limits
+summary: Create a Pod with CPU and memory limits set on its container.
+difficulty: easy
+estimated_minutes: 10
+
+infrastructure:
+  provider: aws
+  module: ./terraform
+  ttl_minutes: 120
+  inputs:
+    instance_type: t3.small
+    region: eu-west-1
+
+access:
+  kind: kubeconfig
+  output: kubeconfig
+
+instructions: |
+  A single-node Kubernetes cluster (k3s) is ready for you.
+
+  Your task is to create a Pod that requests bounded resources, so the
+  scheduler and kubelet can enforce CPU and memory ceilings on it.
+
+tasks:
+  - id: create-pod
+    title: Create the Pod
+    instructions: |
+      Create a Pod with the following spec:
+
+      - **Name**: `nginx-limited`
+      - **Namespace**: `default`
+      - **Image**: `nginx:1.25`
+      - **CPU limit**: `200m`
+      - **Memory limit**: `256Mi`
+
+      The Pod must reach the `Running` phase.
+    validations:
+      - kind: kubectl
+        args: ["get", "pod", "nginx-limited", "-n", "default", "-o", "jsonpath={.status.phase}"]
+        expect_equals: "Running"
+      - kind: kubectl
+        args: ["get", "pod", "nginx-limited", "-n", "default", "-o", "jsonpath={.spec.containers[0].resources.limits.cpu}"]
+        expect_equals: "200m"
+      - kind: kubectl
+        args: ["get", "pod", "nginx-limited", "-n", "default", "-o", "jsonpath={.spec.containers[0].resources.limits.memory}"]
+        expect_equals: "256Mi"
+      - kind: kubectl
+        args: ["get", "pod", "nginx-limited", "-n", "default", "-o", "jsonpath={.spec.containers[0].image}"]
+        expect_equals: "nginx:1.25"
