@@ -39,7 +39,7 @@ func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleGetSession(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	sess, err := s.Manager.Store.Get(id)
+	sess, err := s.Manager.Get(id)
 	if err != nil {
 		writeError(w, http.StatusNotFound, err.Error())
 		return
@@ -83,7 +83,7 @@ func (s *Server) handleValidateTask(w http.ResponseWriter, r *http.Request) {
 	sessID := r.PathValue("id")
 	taskID := r.PathValue("task_id")
 
-	sess, err := s.Manager.Store.Get(sessID)
+	sess, err := s.Manager.Get(sessID)
 	if err != nil {
 		writeError(w, http.StatusNotFound, err.Error())
 		return

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"net/http"
@@ -9,9 +10,18 @@ import (
 	"github.com/eltonlaice/ilabhu/control-plane/internal/session"
 )
 
+// SessionManager is the slice of session.Manager that the HTTP layer needs.
+// Defining it as an interface lets the api package be tested with a fake
+// implementation while keeping session.Manager free of HTTP concerns.
+type SessionManager interface {
+	Start(ctx context.Context, labID string, creds session.CloudCredentials) (*session.Session, error)
+	Get(id string) (*session.Session, error)
+	Destroy(ctx context.Context, id string, creds session.CloudCredentials) error
+}
+
 type Server struct {
 	Catalog *catalog.Catalog
-	Manager *session.Manager
+	Manager SessionManager
 	Logger  *slog.Logger
 }
 
