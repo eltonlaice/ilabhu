@@ -11,6 +11,23 @@ export type Lab = {
   estimated_minutes: number;
 };
 
+export type LabTask = {
+  id: string;
+  title: string;
+  instructions: string;
+};
+
+export type LabDetail = Lab & {
+  version: number;
+  exam_objective: string;
+  instructions: string;
+  tasks: LabTask[];
+  infrastructure: {
+    provider: string;
+    ttl_minutes: number;
+  };
+};
+
 export type SessionStatus =
   | "provisioning"
   | "ready"
@@ -47,6 +64,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export async function listLabs(): Promise<Lab[]> {
   return request<Lab[]>("/v1/labs");
+}
+
+export async function getLab(id: string): Promise<LabDetail> {
+  // id may contain slashes (e.g. cka/pod-resource-limits); each segment must
+  // be encoded individually so the full id reaches the catch-all backend
+  // route intact.
+  const encoded = id.split("/").map(encodeURIComponent).join("/");
+  return request<LabDetail>(`/v1/labs/${encoded}`);
 }
 
 export async function getSession(id: string): Promise<Session> {
