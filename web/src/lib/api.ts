@@ -1,6 +1,10 @@
-// Thin client for ilabhud's HTTP API. The browser hits /api/* on the same
-// origin; next.config.ts rewrites that to the ilabhud base URL configured by
-// ILABHU_API_BASE (default http://127.0.0.1:8080).
+// Thin client for ilabhud's HTTP API.
+//
+// In the browser we use a relative /api/* URL — next.config.ts rewrites that
+// to the ilabhud base URL configured by ILABHU_API_BASE.
+//
+// On the server (Server Components, route handlers) fetch() needs an absolute
+// URL, so we read ILABHU_API_BASE directly and skip the rewrite.
 
 export type Lab = {
   id: string;
@@ -46,8 +50,16 @@ export type Session = {
   error?: string;
 };
 
+function apiURL(path: string): string {
+  if (typeof window === "undefined") {
+    const base = process.env.ILABHU_API_BASE ?? "http://127.0.0.1:8080";
+    return `${base}${path}`;
+  }
+  return `/api${path}`;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`/api${path}`, {
+  const res = await fetch(apiURL(path), {
     ...init,
     headers: {
       "content-type": "application/json",
@@ -116,7 +128,7 @@ export async function destroySession(
   id: string,
   creds: { aws_role_arn: string; aws_external_id: string },
 ): Promise<void> {
-  const res = await fetch(`/api/v1/sessions/${encodeURIComponent(id)}`, {
+  const res = await fetch(apiURL(`/v1/sessions/${encodeURIComponent(id)}`), {
     method: "DELETE",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(creds),
