@@ -219,8 +219,8 @@ func fetchKubeconfig(ctx context.Context, keyPath, user, host, remotePath string
 	if err != nil {
 		return nil, err
 	}
-	tmp.Close()
-	defer os.Remove(tmp.Name())
+	_ = tmp.Close()
+	defer func() { _ = os.Remove(tmp.Name()) }()
 
 	scpArgs := append([]string{}, sshOpts...)
 	scpArgs = append(scpArgs, target+":"+remotePath, tmp.Name())

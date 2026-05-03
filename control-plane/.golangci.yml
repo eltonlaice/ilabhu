@@ -1,0 +1,84 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gosec
+    - revive
+    - misspell
+    - bodyclose
+    - errorlint
+    - nilerr
+    - unconvert
+    - unparam
+
+  settings:
+    revive:
+      rules:
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+        # 'exported' (godoc on every exported symbol) is theatre for an
+        # internal-only codebase. Re-enable when the public API stabilises.
+        - name: increment-decrement
+        - name: var-naming
+        - name: var-declaration
+        - name: package-comments
+          disabled: true
+        - name: range
+        - name: receiver-naming
+        - name: time-naming
+        - name: indent-error-flow
+        - name: errorf
+        - name: empty-block
+        - name: superfluous-else
+        - name: unused-parameter
+          disabled: true
+        - name: unreachable-code
+        - name: redefines-builtin-id
+
+    gosec:
+      excludes:
+        # G104: handled by errcheck.
+        - G104
+        # G204: shelling out to terraform/kubectl/ssh/scp is a core design
+        # choice. Inputs to those commands are validated by the lab manifest
+        # parser and the per-session workdir.
+        - G204
+        # G304: file paths come from manifests we parse and from per-session
+        # workdirs we own. The control plane is not exposed to untrusted
+        # filesystem input.
+        - G304
+        # G301/G306: lab workdirs and test fixtures use conventional 0755/0644.
+        # Tightening would not change the threat model for a single-tenant
+        # daemon and would noise up tests.
+        - G301
+        - G306
+        # G118: session.Manager.Start intentionally launches a goroutine with
+        # a fresh context.Background — provisioning outlives the HTTP
+        # request that triggered it.
+        - G118
+
+  exclusions:
+    rules:
+      # Test files routinely ignore Close/Remove return values; that's fine.
+      - path: _test\.go
+        linters:
+          - errcheck
+
+formatters:
+  enable:
+    - gofmt
+    - goimports

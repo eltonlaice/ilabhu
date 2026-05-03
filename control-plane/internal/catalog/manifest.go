@@ -41,13 +41,13 @@ type Task struct {
 }
 
 type Validation struct {
-	Kind            string   `yaml:"kind"` // kubectl | shell | http
-	Args            []string `yaml:"args,omitempty"`
-	Script          string   `yaml:"script,omitempty"`
-	URL             string   `yaml:"url,omitempty"`
-	ExpectEquals    *string  `yaml:"expect_equals,omitempty"`
-	ExpectContains  *string  `yaml:"expect_contains,omitempty"`
-	ExpectExitCode  *int     `yaml:"expect_exit_code,omitempty"`
-	ExpectStatus    *int     `yaml:"expect_status,omitempty"`
-	ExpectBodyHas   *string  `yaml:"expect_body_contains,omitempty"`
+	Kind           string   `yaml:"kind"` // kubectl | shell | http
+	Args           []string `yaml:"args,omitempty"`
+	Script         string   `yaml:"script,omitempty"`
+	URL            string   `yaml:"url,omitempty"`
+	ExpectEquals   *string  `yaml:"expect_equals,omitempty"`
+	ExpectContains *string  `yaml:"expect_contains,omitempty"`
+	ExpectExitCode *int     `yaml:"expect_exit_code,omitempty"`
+	ExpectStatus   *int     `yaml:"expect_status,omitempty"`
+	ExpectBodyHas  *string  `yaml:"expect_body_contains,omitempty"`
 }
