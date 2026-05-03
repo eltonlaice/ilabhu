@@ -6,6 +6,11 @@ on:
   pull_request:
     branches: [main]
 
+# Opt actions into the Node.js 24 runtime ahead of the June 2026 cutover, so
+# we surface any incompatibilities now rather than on the forced switch.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   golangci-lint:
     name: golangci-lint
