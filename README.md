@@ -1,5 +1,10 @@
 # ilabhu
 
+[![CI](https://github.com/eltonlaice/ilabhu/actions/workflows/go.yml/badge.svg?branch=main)](https://github.com/eltonlaice/ilabhu/actions/workflows/go.yml)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Go Reference](https://pkg.go.dev/badge/github.com/eltonlaice/ilabhu/control-plane.svg)](https://pkg.go.dev/github.com/eltonlaice/ilabhu/control-plane)
+[![Go Report Card](https://goreportcard.com/badge/github.com/eltonlaice/ilabhu/control-plane)](https://goreportcard.com/report/github.com/eltonlaice/ilabhu/control-plane)
+
 **Hands-on certification labs you run in your own cloud.**
 
 Open source. Exam-focused (CKA, CKAD, CKS, RHCSA, ...). Provisioned in your own AWS, GCP or Azure account — no shared sandbox, no subscription.
