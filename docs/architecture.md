@@ -103,6 +103,6 @@ The session store is in-memory. Restarting `ilabhud` loses the session map, thou
 ## Relevant files
 
 - [`docs/lab-schema.md`](lab-schema.md) — `lab.yaml` reference.
-- [`docs/byo-cloud-setup.md`](byo-cloud-setup.md) — *(to be written)* IAM policy + role trust setup.
+- [`docs/byo-cloud-setup.md`](byo-cloud-setup.md) — IAM policy + role trust setup.
 - [`control-plane/README.md`](../control-plane/README.md) — running the daemon, HTTP API surface.
 - [`control-plane/internal/session/manager.go`](../control-plane/internal/session/manager.go) — the lifecycle code described above.
