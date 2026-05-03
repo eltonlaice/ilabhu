@@ -4,14 +4,14 @@ Thanks for considering a contribution. ilabhu is small and early — direction i
 
 ## Ways to contribute
 
-- **Add a lab.** New labs (CKA, CKAD, CKS, RHCSA, ...) are the highest-leverage contribution. See [docs/lab-schema.md](docs/lab-schema.md) for the manifest format.
+- **Add an exam.** New exams (CKA, CKAD, CKS, RHCSA, ...) are the highest-leverage contribution. See [docs/exam-schema.md](docs/exam-schema.md) for the manifest format.
 - **Fix a bug** you hit while running the project locally.
 - **Improve docs.** READMEs, examples, the lab schema reference, the BYO-cloud setup guide.
 - **Add a cloud adapter.** GCP and Azure adapters are wanted; the AWS adapter at `control-plane/internal/cloud/aws/` is the reference shape.
 
 ## Before opening a large PR
 
-For anything that changes public behavior — the `lab.yaml` schema, the HTTP API, the database model — please open an issue first to discuss the shape. Small fixes and docs changes don't need that step.
+For anything that changes public behavior — the `exam.yaml` schema, the HTTP API, the database model — please open an issue first to discuss the shape. Small fixes and docs changes don't need that step.
 
 ## Local development
 
@@ -29,7 +29,7 @@ cd control-plane
 go build ./...
 go vet ./...
 go test ./...
-go run ./cmd/ilabhud -addr :8080 -labs-dir ../labs
+go run ./cmd/ilabhud -addr :8080 -exams-dir ../exams
 ```
 
 See [`control-plane/README.md`](control-plane/README.md) for the full set of flags and runtime details.

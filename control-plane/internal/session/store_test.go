@@ -13,8 +13,8 @@ func TestStore_CreateAssignsIDAndState(t *testing.T) {
 	if sess.ID == "" {
 		t.Error("ID is empty")
 	}
-	if sess.LabID != "cka/example" {
-		t.Errorf("LabID = %q, want cka/example", sess.LabID)
+	if sess.ExamID != "cka/example" {
+		t.Errorf("LabID = %q, want cka/example", sess.ExamID)
 	}
 	if sess.Status != StatusProvisioning {
 		t.Errorf("Status = %q, want %q", sess.Status, StatusProvisioning)

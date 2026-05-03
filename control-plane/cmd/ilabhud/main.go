@@ -19,18 +19,18 @@ import (
 
 func main() {
 	addr := flag.String("addr", ":8080", "HTTP listen address")
-	labsDir := flag.String("labs-dir", "../labs", "directory containing lab manifests")
+	examsDir := flag.String("exams-dir", "../exams", "directory containing exam manifests")
 	stateDir := flag.String("state-dir", defaultStateDir(), "directory for per-session terraform state")
 	flag.Parse()
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
-	cat, err := catalog.Load(*labsDir)
+	cat, err := catalog.Load(*examsDir)
 	if err != nil {
 		logger.Error("load catalog", "err", err)
 		os.Exit(1)
 	}
-	logger.Info("catalog loaded", "labs", len(cat.List()))
+	logger.Info("catalog loaded", "exams", len(cat.List()))
 
 	if err := os.MkdirAll(*stateDir, 0o700); err != nil {
 		logger.Error("create state dir", "err", err)

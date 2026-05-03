@@ -54,14 +54,14 @@ linters:
         # G104: handled by errcheck.
         - G104
         # G204: shelling out to terraform/kubectl/ssh/scp is a core design
-        # choice. Inputs to those commands are validated by the lab manifest
+        # choice. Inputs to those commands are validated by the exam manifest
         # parser and the per-session workdir.
         - G204
         # G304: file paths come from manifests we parse and from per-session
         # workdirs we own. The control plane is not exposed to untrusted
         # filesystem input.
         - G304
-        # G301/G306: lab workdirs and test fixtures use conventional 0755/0644.
+        # G301/G306: exam workdirs and test fixtures use conventional 0755/0644.
         # Tightening would not change the threat model for a single-tenant
         # daemon and would noise up tests.
         - G301

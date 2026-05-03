@@ -11,17 +11,22 @@ const validManifest = `schema_version: 1
 id: cka/example
 version: 1
 exam: CKA
-exam_objective: Workloads
 title: Example
-summary: An example lab.
+summary: An example exam.
 difficulty: easy
 estimated_minutes: 5
+time_limit_minutes: 30
+passing_score: 100
+domains:
+  - name: Workloads
+    weight: 100
 infrastructure:
-  provider: aws
-  module: ./terraform
   ttl_minutes: 60
-  inputs:
-    instance_type: t3.small
+  providers:
+    aws:
+      module: ./aws
+      inputs:
+        instance_type: t3.small
 access:
   kind: kubeconfig
   output: kubeconfig
@@ -30,6 +35,8 @@ instructions: |
 tasks:
   - id: do-it
     title: Do it
+    domain: Workloads
+    weight: 100
     instructions: Do it.
     validations:
       - kind: kubectl
@@ -42,7 +49,7 @@ func writeManifest(t *testing.T, dir, content string) string {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
-	path := filepath.Join(dir, "lab.yaml")
+	path := filepath.Join(dir, "exam.yaml")
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
@@ -63,8 +70,26 @@ func TestParseManifest_Valid(t *testing.T) {
 	if m.Dir != dir {
 		t.Errorf("Dir = %q, want %q", m.Dir, dir)
 	}
+	if m.PassingScore != 100 {
+		t.Errorf("PassingScore = %d, want 100", m.PassingScore)
+	}
+	if m.TimeLimitMinutes != 30 {
+		t.Errorf("TimeLimitMinutes = %d, want 30", m.TimeLimitMinutes)
+	}
+	if len(m.Domains) != 1 || m.Domains[0].Name != "Workloads" || m.Domains[0].Weight != 100 {
+		t.Errorf("Domains = %+v", m.Domains)
+	}
+	if _, ok := m.Infrastructure.Providers["aws"]; !ok {
+		t.Errorf("expected aws provider, got %v", m.Infrastructure.Providers)
+	}
+	if m.Infrastructure.Providers["aws"].Module != "./aws" {
+		t.Errorf("aws.module = %q", m.Infrastructure.Providers["aws"].Module)
+	}
 	if len(m.Tasks) != 1 {
 		t.Fatalf("Tasks = %d, want 1", len(m.Tasks))
+	}
+	if m.Tasks[0].Domain != "Workloads" || m.Tasks[0].Weight != 100 {
+		t.Errorf("task domain/weight wrong: %+v", m.Tasks[0])
 	}
 	if len(m.Tasks[0].Validations) != 1 {
 		t.Fatalf("Validations = %d, want 1", len(m.Tasks[0].Validations))

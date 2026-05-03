@@ -1,20 +1,27 @@
 schema_version: 1
-id: cka/pod-resource-limits
+id: cka/warmup
 version: 1
 exam: CKA
-exam_objective: "Workloads & Scheduling — Understand the primitives used to create robust, self-healing application deployments (resource limits)."
-title: Pod with resource limits
-summary: Create a Pod with CPU and memory limits set on its container.
+title: CKA — Warmup
+summary: Single-task warmup that exercises the ilabhu pipeline end-to-end. Not the real CKA exam; the full simulation lives at cka/full.
 difficulty: easy
 estimated_minutes: 10
+time_limit_minutes: 30
+passing_score: 100
+
+domains:
+  - name: Workloads & Scheduling
+    weight: 100
 
 infrastructure:
-  provider: aws
-  module: ./terraform
   ttl_minutes: 120
-  inputs:
-    instance_type: t3.small
-    region: eu-west-1
+  providers:
+    aws:
+      module: ./aws
+      inputs:
+        region: eu-west-1
+        instance_type: t3.small
+    # digitalocean, gcp, azure, byo-hosts will be added in follow-up PRs.
 
 access:
   kind: kubeconfig
@@ -23,12 +30,14 @@ access:
 instructions: |
   A single-node Kubernetes cluster (k3s) is ready for you.
 
-  Your task is to create a Pod that requests bounded resources, so the
-  scheduler and kubelet can enforce CPU and memory ceilings on it.
+  This is a warmup, not the full CKA exam. It exists to verify the
+  end-to-end pipeline (provision, fetch kubeconfig, validate, destroy).
 
 tasks:
   - id: create-pod
     title: Create the Pod
+    domain: Workloads & Scheduling
+    weight: 100
     instructions: |
       Create a Pod with the following spec:
 

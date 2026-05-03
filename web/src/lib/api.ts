@@ -6,28 +6,39 @@
 // On the server (Server Components, route handlers) fetch() needs an absolute
 // URL, so we read ILABHU_API_BASE directly and skip the rewrite.
 
-export type Lab = {
+export type Provider = "aws" | "gcp" | "azure" | "digitalocean" | "byo-hosts";
+
+export type Exam = {
   id: string;
   title: string;
   exam: string;
   difficulty: "easy" | "medium" | "hard";
   summary: string;
   estimated_minutes: number;
+  time_limit_minutes: number;
+  passing_score: number;
+  providers: Provider[];
 };
 
-export type LabTask = {
+export type ExamTask = {
   id: string;
   title: string;
+  domain?: string;
+  weight?: number;
   instructions: string;
 };
 
-export type LabDetail = Lab & {
+export type ExamDomain = {
+  name: string;
+  weight: number;
+};
+
+export type ExamDetail = Exam & {
   version: number;
-  exam_objective: string;
   instructions: string;
-  tasks: LabTask[];
+  domains: ExamDomain[];
+  tasks: ExamTask[];
   infrastructure: {
-    provider: string;
     ttl_minutes: number;
   };
 };
@@ -41,13 +52,21 @@ export type SessionStatus =
 
 export type Session = {
   id: string;
-  lab_id: string;
+  exam_id: string;
+  provider: Provider;
   status: SessionStatus;
   created_at: string;
   updated_at: string;
   outputs?: Record<string, unknown>;
   kubeconfig_b64?: string;
   error?: string;
+};
+
+export type ProviderCredentials = {
+  provider: Provider;
+  aws?: { role_arn: string; external_id: string };
+  // gcp / azure / digitalocean / byo-hosts blocks will be added in
+  // follow-up PRs as those adapters land in the control plane.
 };
 
 function apiURL(path: string): string {
@@ -74,31 +93,44 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-export async function listLabs(): Promise<Lab[]> {
-  return request<Lab[]>("/v1/labs");
+export async function listExams(): Promise<Exam[]> {
+  return request<Exam[]>("/v1/exams");
 }
 
-export async function getLab(id: string): Promise<LabDetail> {
-  // id may contain slashes (e.g. cka/pod-resource-limits); each segment must
-  // be encoded individually so the full id reaches the catch-all backend
-  // route intact.
+export async function getExam(id: string): Promise<ExamDetail> {
+  // id may contain slashes (e.g. cka/warmup); each segment must be encoded
+  // individually so the full id reaches the catch-all backend route intact.
   const encoded = id.split("/").map(encodeURIComponent).join("/");
-  return request<LabDetail>(`/v1/labs/${encoded}`);
+  return request<ExamDetail>(`/v1/exams/${encoded}`);
 }
 
 export async function getSession(id: string): Promise<Session> {
   return request<Session>(`/v1/sessions/${encodeURIComponent(id)}`);
 }
 
-export async function startSession(input: {
-  lab_id: string;
-  aws_role_arn: string;
-  aws_external_id: string;
-}): Promise<Session> {
+export async function startSession(
+  examID: string,
+  creds: ProviderCredentials,
+): Promise<Session> {
   return request<Session>("/v1/sessions", {
     method: "POST",
-    body: JSON.stringify(input),
+    body: JSON.stringify({ exam_id: examID, ...creds }),
   });
+}
+
+export async function destroySession(
+  id: string,
+  creds: ProviderCredentials,
+): Promise<void> {
+  const res = await fetch(apiURL(`/v1/sessions/${encodeURIComponent(id)}`), {
+    method: "DELETE",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(creds),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`HTTP ${res.status}: ${body || res.statusText}`);
+  }
 }
 
 export type ValidationResult = {
@@ -122,19 +154,4 @@ export async function validateTask(
     `/v1/sessions/${encodeURIComponent(sessionID)}/tasks/${encodeURIComponent(taskID)}/validate`,
     { method: "POST" },
   );
-}
-
-export async function destroySession(
-  id: string,
-  creds: { aws_role_arn: string; aws_external_id: string },
-): Promise<void> {
-  const res = await fetch(apiURL(`/v1/sessions/${encodeURIComponent(id)}`), {
-    method: "DELETE",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(creds),
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`HTTP ${res.status}: ${body || res.statusText}`);
-  }
 }

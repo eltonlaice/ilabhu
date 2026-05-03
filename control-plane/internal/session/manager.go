@@ -16,11 +16,21 @@ import (
 	"github.com/eltonlaice/ilabhu/control-plane/internal/provisioner"
 )
 
-// CloudCredentials carries the BYO-cloud info the user supplies when starting
-// a session.
-type CloudCredentials struct {
-	AWSRoleARN    string
-	AWSExternalID string
+// StartInput is the per-provider payload supplied by the user when starting a
+// session. Exactly one of the provider-specific fields must be populated and
+// must match Provider.
+type StartInput struct {
+	Provider string // aws | gcp | azure | digitalocean | byo-hosts
+
+	AWS *AWSCredentials
+	// GCP, Azure, DigitalOcean, BYOHosts to be added in follow-up PRs.
+}
+
+// AWSCredentials carries the role ARN + external id pair the control plane
+// uses to assume a short-lived role in the user's account.
+type AWSCredentials struct {
+	RoleARN    string
+	ExternalID string
 }
 
 // Manager owns the lifecycle of sessions: it talks to the catalog, provisions
@@ -33,27 +43,38 @@ type Manager struct {
 	Logger   *slog.Logger
 }
 
-// Start kicks off provisioning for `labID`. It returns immediately; the caller
-// polls the store for status.
-func (m *Manager) Start(ctx context.Context, labID string, creds CloudCredentials) (*Session, error) {
-	lab, ok := m.Catalog.Get(labID)
+// Start kicks off provisioning for `examID`. It returns immediately; the
+// caller polls the store for status.
+func (m *Manager) Start(ctx context.Context, examID string, input StartInput) (*Session, error) {
+	exam, ok := m.Catalog.Get(examID)
 	if !ok {
-		return nil, fmt.Errorf("lab %q not found", labID)
+		return nil, fmt.Errorf("exam %q not found", examID)
 	}
-	if lab.Infrastructure.Provider != "aws" {
-		return nil, fmt.Errorf("provider %q not supported yet", lab.Infrastructure.Provider)
+	if input.Provider == "" {
+		return nil, errors.New("provider is required")
 	}
-	if creds.AWSRoleARN == "" {
-		return nil, errors.New("aws_role_arn is required")
+	spec, ok := exam.Infrastructure.Providers[input.Provider]
+	if !ok {
+		return nil, fmt.Errorf("exam %q does not declare provider %q", examID, input.Provider)
 	}
+	switch input.Provider {
+	case "aws":
+		if input.AWS == nil || input.AWS.RoleARN == "" {
+			return nil, errors.New("aws.role_arn is required")
+		}
+	default:
+		return nil, fmt.Errorf("provider %q not implemented yet", input.Provider)
+	}
+	_ = spec // used inside provision
 
-	sess := m.Store.Create(labID)
-	go m.provision(context.Background(), sess, lab, creds)
+	sess := m.Store.Create(examID)
+	_ = m.Store.Update(sess.ID, func(s *Session) { s.Provider = input.Provider })
+	go m.provision(context.Background(), sess, exam, spec, input)
 	return sess, nil
 }
 
-func (m *Manager) provision(ctx context.Context, sess *Session, lab *catalog.Manifest, creds CloudCredentials) {
-	log := m.Logger.With("session_id", sess.ID, "lab_id", lab.ID)
+func (m *Manager) provision(ctx context.Context, sess *Session, exam *catalog.Manifest, spec catalog.ProviderSpec, input StartInput) {
+	log := m.Logger.With("session_id", sess.ID, "exam_id", exam.ID, "provider", input.Provider)
 
 	workdir := filepath.Join(m.StateDir, "sessions", sess.ID)
 	if err := os.MkdirAll(workdir, 0o700); err != nil {
@@ -61,7 +82,7 @@ func (m *Manager) provision(ctx context.Context, sess *Session, lab *catalog.Man
 		return
 	}
 	moduleDst := filepath.Join(workdir, "module")
-	moduleSrc := filepath.Join(lab.Dir, lab.Infrastructure.Module)
+	moduleSrc := filepath.Join(exam.Dir, spec.Module)
 	if err := provisioner.PrepareWorkdir(moduleSrc, moduleDst); err != nil {
 		m.fail(sess, fmt.Errorf("copy module: %w", err))
 		return
@@ -74,7 +95,7 @@ func (m *Manager) provision(ctx context.Context, sess *Session, lab *catalog.Man
 		return
 	}
 
-	awsCreds, err := awscloud.AssumeRole(ctx, creds.AWSRoleARN, creds.AWSExternalID, "ilabhu-"+sess.ID, time.Hour)
+	awsCreds, err := awscloud.AssumeRole(ctx, input.AWS.RoleARN, input.AWS.ExternalID, "ilabhu-"+sess.ID, time.Hour)
 	if err != nil {
 		m.fail(sess, fmt.Errorf("assume role: %w", err))
 		return
@@ -84,7 +105,7 @@ func (m *Manager) provision(ctx context.Context, sess *Session, lab *catalog.Man
 		"session_id":     sess.ID,
 		"ssh_public_key": pubKey,
 	}
-	for k, v := range lab.Infrastructure.Inputs {
+	for k, v := range spec.Inputs {
 		vars[k] = v
 	}
 
@@ -108,12 +129,12 @@ func (m *Manager) provision(ctx context.Context, sess *Session, lab *catalog.Man
 		plain[k] = v.Value
 	}
 
-	if lab.Access.Kind == "kubeconfig" {
+	if exam.Access.Kind == "kubeconfig" {
 		ip, _ := plain["public_ip"].(string)
 		user, _ := plain["ssh_user"].(string)
 		remotePath, _ := plain["kubeconfig_path_on_host"].(string)
 		if ip == "" || user == "" || remotePath == "" {
-			m.fail(sess, errors.New("lab outputs missing public_ip/ssh_user/kubeconfig_path_on_host"))
+			m.fail(sess, errors.New("exam outputs missing public_ip/ssh_user/kubeconfig_path_on_host"))
 			return
 		}
 		kubeconfig, err := fetchKubeconfig(ctx, keyPath, user, ip, remotePath)
@@ -133,15 +154,8 @@ func (m *Manager) provision(ctx context.Context, sess *Session, lab *catalog.Man
 	log.Info("ready")
 }
 
-// Get returns the session record for `id`, or session.ErrNotFound. It is a
-// thin convenience over Manager.Store so callers (notably the API layer) do
-// not need to depend on the in-memory store implementation directly.
-func (m *Manager) Get(id string) (*Session, error) {
-	return m.Store.Get(id)
-}
-
 // Destroy tears down a session synchronously.
-func (m *Manager) Destroy(ctx context.Context, sessID string, creds CloudCredentials) error {
+func (m *Manager) Destroy(ctx context.Context, sessID string, input StartInput) error {
 	sess, err := m.Store.Get(sessID)
 	if err != nil {
 		return err
@@ -149,21 +163,39 @@ func (m *Manager) Destroy(ctx context.Context, sessID string, creds CloudCredent
 	if sess.Workdir == "" {
 		return errors.New("session has no workdir; nothing to destroy")
 	}
-	awsCreds, err := awscloud.AssumeRole(ctx, creds.AWSRoleARN, creds.AWSExternalID, "ilabhu-destroy-"+sess.ID, time.Hour)
-	if err != nil {
-		return fmt.Errorf("assume role: %w", err)
+	if input.Provider != sess.Provider {
+		return fmt.Errorf("provider mismatch: session was started with %q, got %q", sess.Provider, input.Provider)
 	}
-	_ = m.Store.Update(sessID, func(s *Session) { s.Status = StatusDestroying })
-	moduleDst := filepath.Join(sess.Workdir, "module")
-	if err := m.TF.Destroy(ctx, moduleDst, awsCreds.AsEnv()); err != nil {
-		_ = m.Store.Update(sessID, func(s *Session) {
-			s.Status = StatusFailed
-			s.Error = err.Error()
-		})
-		return err
+	switch input.Provider {
+	case "aws":
+		if input.AWS == nil || input.AWS.RoleARN == "" {
+			return errors.New("aws.role_arn is required")
+		}
+		awsCreds, err := awscloud.AssumeRole(ctx, input.AWS.RoleARN, input.AWS.ExternalID, "ilabhu-destroy-"+sess.ID, time.Hour)
+		if err != nil {
+			return fmt.Errorf("assume role: %w", err)
+		}
+		_ = m.Store.Update(sessID, func(s *Session) { s.Status = StatusDestroying })
+		moduleDst := filepath.Join(sess.Workdir, "module")
+		if err := m.TF.Destroy(ctx, moduleDst, awsCreds.AsEnv()); err != nil {
+			_ = m.Store.Update(sessID, func(s *Session) {
+				s.Status = StatusFailed
+				s.Error = err.Error()
+			})
+			return err
+		}
+	default:
+		return fmt.Errorf("provider %q not implemented yet", input.Provider)
 	}
 	_ = m.Store.Update(sessID, func(s *Session) { s.Status = StatusDestroyed })
 	return nil
+}
+
+// Get returns the session record for `id`, or session.ErrNotFound. It is a
+// thin convenience over Manager.Store so callers (notably the API layer) do
+// not need to depend on the in-memory store implementation directly.
+func (m *Manager) Get(id string) (*Session, error) {
+	return m.Store.Get(id)
 }
 
 func (m *Manager) fail(sess *Session, err error) {

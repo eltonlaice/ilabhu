@@ -27,8 +27,9 @@ ILABHU_API_BASE=https://my-ilabhud.internal npm run dev
 
 | Route | Purpose |
 |---|---|
-| `/` | Lab catalog. Lists every lab the control plane reports under `GET /v1/labs`. |
-| `/labs/[id]` | *(next PR)* Lab detail + start session form + session monitor. |
+| `/` | Exam catalog. Lists every exam the control plane reports under `GET /v1/exams`. |
+| `/exams/[...slug]` | Exam detail + start session form (provider selector). |
+| `/sessions/[id]` | Session monitor: status polling, kubeconfig download, per-task Validate, destroy. |
 
 ## Build
 

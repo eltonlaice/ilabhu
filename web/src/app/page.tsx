@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { listLabs, type Lab } from "@/lib/api";
+import { listExams, type Exam, type Provider } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
 
-function difficultyColor(d: Lab["difficulty"]): string {
+function difficultyColor(d: Exam["difficulty"]): string {
   switch (d) {
     case "easy":
       return "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300";
@@ -16,11 +16,26 @@ function difficultyColor(d: Lab["difficulty"]): string {
   }
 }
 
+function providerLabel(p: Provider): string {
+  switch (p) {
+    case "aws":
+      return "AWS";
+    case "gcp":
+      return "GCP";
+    case "azure":
+      return "Azure";
+    case "digitalocean":
+      return "DigitalOcean";
+    case "byo-hosts":
+      return "Your hosts";
+  }
+}
+
 export default async function HomePage() {
-  let labs: Lab[] = [];
+  let exams: Exam[] = [];
   let error: string | null = null;
   try {
-    labs = await listLabs();
+    exams = await listExams();
   } catch (e) {
     error = e instanceof Error ? e.message : String(e);
   }
@@ -29,11 +44,12 @@ export default async function HomePage() {
     <div>
       <section className="mb-10">
         <h1 className="text-3xl font-semibold tracking-tight">
-          Hands-on certification labs you run in your own cloud.
+          Practice the full exam, in your own infrastructure.
         </h1>
         <p className="mt-3 max-w-2xl text-neutral-600 dark:text-neutral-400">
-          Pick a lab. We provision it in your own AWS account, drop you into a
-          terminal, and grade your work against the exam objective.
+          Pick a certification. ilabhu provisions the environment, runs you
+          through the objectives, and grades each task — on your AWS, GCP,
+          Azure, DigitalOcean account, or on Linux servers you already own.
         </p>
       </section>
 
@@ -47,38 +63,56 @@ export default async function HomePage() {
             <code className="font-mono">ILABHU_API_BASE</code>.
           </p>
         </div>
-      ) : labs.length === 0 ? (
+      ) : exams.length === 0 ? (
         <div className="rounded-md border border-neutral-200 bg-white p-6 text-sm text-neutral-600 dark:border-neutral-800 dark:bg-neutral-900 dark:text-neutral-400">
-          No labs found. Add one under{" "}
-          <code className="font-mono">labs/&lt;exam&gt;/&lt;id&gt;/lab.yaml</code>.
+          No exams found. Add one under{" "}
+          <code className="font-mono">exams/&lt;exam&gt;/&lt;id&gt;/exam.yaml</code>.
         </div>
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2">
-          {labs.map((lab) => (
-            <li key={lab.id}>
+          {exams.map((exam) => (
+            <li key={exam.id}>
               <Link
-                href={`/labs/${encodeURIComponent(lab.id)}`}
+                href={`/exams/${exam.id.split("/").map(encodeURIComponent).join("/")}`}
                 className="block h-full rounded-lg border border-neutral-200 bg-white p-5 transition hover:border-neutral-400 hover:shadow-sm dark:border-neutral-800 dark:bg-neutral-900 dark:hover:border-neutral-600"
               >
                 <div className="flex items-center gap-2 text-xs text-neutral-500">
                   <span className="rounded bg-neutral-100 px-1.5 py-0.5 font-medium uppercase tracking-wide dark:bg-neutral-800">
-                    {lab.exam}
+                    {exam.exam}
                   </span>
                   <span
                     className={`rounded px-1.5 py-0.5 font-medium uppercase tracking-wide ${difficultyColor(
-                      lab.difficulty,
+                      exam.difficulty,
                     )}`}
                   >
-                    {lab.difficulty}
+                    {exam.difficulty}
                   </span>
-                  <span className="ml-auto">~{lab.estimated_minutes} min</span>
+                  <span className="ml-auto">
+                    {exam.time_limit_minutes
+                      ? `${exam.time_limit_minutes} min`
+                      : `~${exam.estimated_minutes} min`}
+                  </span>
                 </div>
-                <h2 className="mt-3 text-lg font-medium">{lab.title}</h2>
+                <h2 className="mt-3 text-lg font-medium">{exam.title}</h2>
                 <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
-                  {lab.summary}
+                  {exam.summary}
                 </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                  <span className="text-neutral-500">Pass:</span>
+                  <span className="font-medium">{exam.passing_score}%</span>
+                  <span className="ml-auto flex flex-wrap items-center gap-1">
+                    {exam.providers.map((p) => (
+                      <span
+                        key={p}
+                        className="rounded bg-neutral-100 px-1.5 py-0.5 font-medium text-neutral-600 dark:bg-neutral-800 dark:text-neutral-400"
+                      >
+                        {providerLabel(p)}
+                      </span>
+                    ))}
+                  </span>
+                </div>
                 <p className="mt-3 font-mono text-xs text-neutral-400">
-                  {lab.id}
+                  {exam.id}
                 </p>
               </Link>
             </li>
