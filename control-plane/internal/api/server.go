@@ -29,6 +29,7 @@ func (s *Server) Routes() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", s.handleHealth)
 	mux.HandleFunc("GET /v1/labs", s.handleListLabs)
+	mux.HandleFunc("GET /v1/labs/{id...}", s.handleGetLab)
 	mux.HandleFunc("POST /v1/sessions", s.handleCreateSession)
 	mux.HandleFunc("GET /v1/sessions/{id}", s.handleGetSession)
 	mux.HandleFunc("DELETE /v1/sessions/{id}", s.handleDeleteSession)
@@ -38,6 +39,40 @@ func (s *Server) Routes() http.Handler {
 
 func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (s *Server) handleGetLab(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	lab, ok := s.Catalog.Get(id)
+	if !ok {
+		writeError(w, http.StatusNotFound, "lab not found")
+		return
+	}
+	type taskOut struct {
+		ID           string `json:"id"`
+		Title        string `json:"title"`
+		Instructions string `json:"instructions"`
+	}
+	tasks := make([]taskOut, 0, len(lab.Tasks))
+	for _, t := range lab.Tasks {
+		tasks = append(tasks, taskOut{ID: t.ID, Title: t.Title, Instructions: t.Instructions})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"id":                lab.ID,
+		"version":           lab.Version,
+		"exam":              lab.Exam,
+		"exam_objective":    lab.ExamObjective,
+		"title":             lab.Title,
+		"summary":           lab.Summary,
+		"difficulty":        lab.Difficulty,
+		"estimated_minutes": lab.EstimatedMinutes,
+		"instructions":      lab.Instructions,
+		"tasks":             tasks,
+		"infrastructure": map[string]any{
+			"provider":    lab.Infrastructure.Provider,
+			"ttl_minutes": lab.Infrastructure.TTLMinutes,
+		},
+	})
 }
 
 func (s *Server) handleListLabs(w http.ResponseWriter, _ *http.Request) {

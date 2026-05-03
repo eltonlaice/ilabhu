@@ -123,6 +123,80 @@ tasks: []
 	}
 }
 
+func TestGetLab_Success(t *testing.T) {
+	root := t.TempDir()
+	labDir := filepath.Join(root, "cka", "example")
+	if err := os.MkdirAll(labDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	manifest := `schema_version: 1
+id: cka/example
+version: 3
+exam: CKA
+exam_objective: workloads
+title: Example
+summary: x
+difficulty: easy
+estimated_minutes: 7
+infrastructure:
+  provider: aws
+  module: ./terraform
+  ttl_minutes: 90
+access:
+  kind: kubeconfig
+  output: kubeconfig
+instructions: do it.
+tasks:
+  - id: t1
+    title: First task
+    instructions: First instructions.
+    validations: []
+`
+	if err := os.WriteFile(filepath.Join(labDir, "lab.yaml"), []byte(manifest), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cat, err := catalog.Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := newTestServer(t, cat, &fakeManager{})
+
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/v1/labs/cka/example", nil))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body=%s", rr.Code, rr.Body.String())
+	}
+	var resp map[string]any
+	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
+		t.Fatal(err)
+	}
+	if resp["id"] != "cka/example" {
+		t.Errorf("id = %v", resp["id"])
+	}
+	tasks, ok := resp["tasks"].([]any)
+	if !ok || len(tasks) != 1 {
+		t.Fatalf("tasks not present or wrong length: %v", resp["tasks"])
+	}
+	first := tasks[0].(map[string]any)
+	if first["id"] != "t1" || first["title"] != "First task" {
+		t.Errorf("task fields wrong: %v", first)
+	}
+	infra := resp["infrastructure"].(map[string]any)
+	if infra["provider"] != "aws" || infra["ttl_minutes"].(float64) != 90 {
+		t.Errorf("infrastructure fields wrong: %v", infra)
+	}
+}
+
+func TestGetLab_NotFound(t *testing.T) {
+	srv := newTestServer(t, emptyCatalog(t), &fakeManager{})
+
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/v1/labs/cka/missing", nil))
+	if rr.Code != http.StatusNotFound {
+		t.Errorf("status = %d, want 404", rr.Code)
+	}
+}
+
 func TestCreateSession_Success(t *testing.T) {
 	called := false
 	mgr := &fakeManager{
