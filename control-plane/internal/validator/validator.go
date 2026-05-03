@@ -2,6 +2,7 @@ package validator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -51,7 +52,8 @@ func runKubectl(ctx context.Context, kubeconfigPath string, v catalog.Validation
 	if v.ExpectExitCode != nil {
 		exit := 0
 		if err != nil {
-			if ee, ok := err.(*exec.ExitError); ok {
+			var ee *exec.ExitError
+			if errors.As(err, &ee) {
 				exit = ee.ExitCode()
 			} else {
 				return false, fmt.Sprintf("kubectl run error: %v", err)
@@ -84,10 +86,10 @@ func writeKubeconfig(data []byte) (string, func(), error) {
 		return "", nil, err
 	}
 	if _, err := f.Write(data); err != nil {
-		f.Close()
-		os.Remove(f.Name())
+		_ = f.Close()
+		_ = os.Remove(f.Name())
 		return "", nil, err
 	}
-	f.Close()
-	return f.Name(), func() { os.Remove(f.Name()) }, nil
+	_ = f.Close()
+	return f.Name(), func() { _ = os.Remove(f.Name()) }, nil
 }
