@@ -133,6 +133,13 @@ func (m *Manager) provision(ctx context.Context, sess *Session, lab *catalog.Man
 	log.Info("ready")
 }
 
+// Get returns the session record for `id`, or session.ErrNotFound. It is a
+// thin convenience over Manager.Store so callers (notably the API layer) do
+// not need to depend on the in-memory store implementation directly.
+func (m *Manager) Get(id string) (*Session, error) {
+	return m.Store.Get(id)
+}
+
 // Destroy tears down a session synchronously.
 func (m *Manager) Destroy(ctx context.Context, sessID string, creds CloudCredentials) error {
 	sess, err := m.Store.Get(sessID)
