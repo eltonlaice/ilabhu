@@ -54,6 +54,8 @@ A lab is a versioned directory under `labs/` containing:
 
 When a user starts a lab, the control plane assumes a role in the user's cloud account, runs `terraform apply` against the lab module, opens a browser terminal, and runs the validation rules on demand.
 
+For the IAM role + external-id setup, see [docs/byo-cloud-setup.md](docs/byo-cloud-setup.md). For the full architecture, see [docs/architecture.md](docs/architecture.md).
+
 ## Roadmap
 
 - [ ] Lab manifest schema (`lab.yaml`) v1
