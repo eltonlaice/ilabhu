@@ -89,6 +89,29 @@ export async function startSession(input: {
   });
 }
 
+export type ValidationResult = {
+  index: number;
+  kind: string;
+  passed: boolean;
+  message?: string;
+};
+
+export type ValidateResponse = {
+  task_id: string;
+  all_passed: boolean;
+  results: ValidationResult[];
+};
+
+export async function validateTask(
+  sessionID: string,
+  taskID: string,
+): Promise<ValidateResponse> {
+  return request<ValidateResponse>(
+    `/v1/sessions/${encodeURIComponent(sessionID)}/tasks/${encodeURIComponent(taskID)}/validate`,
+    { method: "POST" },
+  );
+}
+
 export async function destroySession(
   id: string,
   creds: { aws_role_arn: string; aws_external_id: string },
