@@ -1,6 +1,6 @@
 # BYO-cloud setup (AWS)
 
-ilabhu provisions every lab in *your* AWS account. The control plane never holds long-lived credentials for your account — instead, it assumes a role you create, with an external id only it knows, and gets short-lived credentials for each lab session.
+ilabhu provisions every exam in *your* AWS account. The control plane never holds long-lived credentials for your account — instead, it assumes a role you create, with an external id only it knows, and gets short-lived credentials for each exam session.
 
 This guide walks you through the one-time setup. It takes about 10 minutes.
 
@@ -14,7 +14,7 @@ This guide walks you through the one-time setup. It takes about 10 minutes.
 
 ## Prerequisites
 
-- An AWS account where you're willing to spend a few cents per lab session (a `t3.small` k3s node for two hours costs roughly \$0.05).
+- An AWS account where you're willing to spend a few cents per exam session (a `t3.small` k3s node for two hours costs roughly \$0.05).
 - AWS CLI configured locally for that account, or access to the AWS Console.
 - The ARN of the trusted principal:
   - **Self-host on a workstation**: your IAM user, e.g. `arn:aws:iam::123456789012:user/elton`. Find it with `aws sts get-caller-identity --query Arn --output text`.
@@ -25,7 +25,7 @@ This guide walks you through the one-time setup. It takes about 10 minutes.
   openssl rand -hex 32
   ```
 
-## Step 1 — Create the lab role
+## Step 1 — Create the exam-runner role
 
 Pick an external id and a trusted principal ARN, then export them:
 
@@ -64,7 +64,7 @@ aws iam create-role \
 
 ## Step 2 — Attach a permissions policy
 
-The role needs to be allowed to do exactly what the lab Terraform modules do — and nothing more. The policy below covers the current lab catalog (single-node k3s on EC2). Expand it if you add labs that touch other services (RDS, S3, etc.).
+The role needs to be allowed to do exactly what the exam Terraform modules do — and nothing more. The policy below covers the current catalog (single-node k3s on EC2). Expand it if you add exams that touch other services (RDS, S3, etc.).
 
 ```sh
 cat > permissions-policy.json <<'EOF'
@@ -147,9 +147,12 @@ With `ilabhud` running locally:
 curl -sX POST http://127.0.0.1:8080/v1/sessions \
   -H 'content-type: application/json' \
   -d "{
-    \"lab_id\": \"cka/pod-resource-limits\",
-    \"aws_role_arn\": \"$(aws iam get-role --role-name ilabhu-lab-runner --query 'Role.Arn' --output text)\",
-    \"aws_external_id\": \"${ILABHU_EXTERNAL_ID}\"
+    \"exam_id\": \"cka/warmup\",
+    \"provider\": \"aws\",
+    \"aws\": {
+      \"role_arn\": \"$(aws iam get-role --role-name ilabhu-lab-runner --query 'Role.Arn' --output text)\",
+      \"external_id\": \"${ILABHU_EXTERNAL_ID}\"
+    }
   }"
 ```
 
@@ -173,8 +176,11 @@ When you're done, destroy the session — and remember, the underlying EC2 insta
 curl -sX DELETE http://127.0.0.1:8080/v1/sessions/<id> \
   -H 'content-type: application/json' \
   -d "{
-    \"aws_role_arn\": \"$(aws iam get-role --role-name ilabhu-lab-runner --query 'Role.Arn' --output text)\",
-    \"aws_external_id\": \"${ILABHU_EXTERNAL_ID}\"
+    \"provider\": \"aws\",
+    \"aws\": {
+      \"role_arn\": \"$(aws iam get-role --role-name ilabhu-lab-runner --query 'Role.Arn' --output text)\",
+      \"external_id\": \"${ILABHU_EXTERNAL_ID}\"
+    }
   }"
 ```
 
@@ -214,4 +220,4 @@ Make sure no sessions are in flight first — without the role, ilabhu cannot ru
 | `AccessDenied: not authorized to perform: sts:AssumeRole` | Trust policy principal ARN does not match the caller. Run `aws sts get-caller-identity` and compare. |
 | `AccessDenied: ... external id` | Mismatch between the external id sent by ilabhu and the one in the trust policy. |
 | `UnauthorizedOperation` during `terraform apply` | Permissions policy is missing an action the lab module needs. Check CloudTrail for the exact action. |
-| `Could not locate AMI` | The lab module is region-pinned. Confirm `infrastructure.inputs.region` in the lab's `lab.yaml` is enabled in your account. |
+| `Could not locate AMI` | The exam module is region-pinned. Confirm `infrastructure.providers.aws.inputs.region` in the exam's `exam.yaml` is enabled in your account. |

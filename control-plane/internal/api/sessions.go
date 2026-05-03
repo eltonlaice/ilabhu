@@ -10,26 +10,47 @@ import (
 	"github.com/eltonlaice/ilabhu/control-plane/internal/validator"
 )
 
-type createSessionRequest struct {
-	LabID         string `json:"lab_id"`
-	AWSRoleARN    string `json:"aws_role_arn"`
-	AWSExternalID string `json:"aws_external_id"`
+// awsCredsBody is the per-provider credentials block in the create/destroy
+// request body.
+type awsCredsBody struct {
+	RoleARN    string `json:"role_arn"`
+	ExternalID string `json:"external_id"`
+}
+
+// sessionRequest is the create- and destroy-session request body. New
+// providers add their own optional block alongside `aws`.
+type sessionRequest struct {
+	ExamID   string        `json:"exam_id,omitempty"`
+	Provider string        `json:"provider"`
+	AWS      *awsCredsBody `json:"aws,omitempty"`
+}
+
+func (r *sessionRequest) toStartInput() session.StartInput {
+	in := session.StartInput{Provider: r.Provider}
+	if r.AWS != nil {
+		in.AWS = &session.AWSCredentials{
+			RoleARN:    r.AWS.RoleARN,
+			ExternalID: r.AWS.ExternalID,
+		}
+	}
+	return in
 }
 
 func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
-	var req createSessionRequest
+	var req sessionRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid json: "+err.Error())
 		return
 	}
-	if req.LabID == "" {
-		writeError(w, http.StatusBadRequest, "lab_id is required")
+	if req.ExamID == "" {
+		writeError(w, http.StatusBadRequest, "exam_id is required")
 		return
 	}
-	sess, err := s.Manager.Start(r.Context(), req.LabID, session.CloudCredentials{
-		AWSRoleARN:    req.AWSRoleARN,
-		AWSExternalID: req.AWSExternalID,
-	})
+	if req.Provider == "" {
+		writeError(w, http.StatusBadRequest, "provider is required")
+		return
+	}
+	sess, err := s.Manager.Start(r.Context(), req.ExamID, req.toStartInput())
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
@@ -46,7 +67,8 @@ func (s *Server) handleGetSession(w http.ResponseWriter, r *http.Request) {
 	}
 	resp := map[string]any{
 		"id":         sess.ID,
-		"lab_id":     sess.LabID,
+		"exam_id":    sess.ExamID,
+		"provider":   sess.Provider,
 		"status":     sess.Status,
 		"created_at": sess.CreatedAt,
 		"updated_at": sess.UpdatedAt,
@@ -61,7 +83,7 @@ func (s *Server) handleGetSession(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleDeleteSession(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	var req createSessionRequest
+	var req sessionRequest
 	body, _ := io.ReadAll(r.Body)
 	if len(body) > 0 {
 		if err := json.Unmarshal(body, &req); err != nil {
@@ -69,10 +91,7 @@ func (s *Server) handleDeleteSession(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if err := s.Manager.Destroy(r.Context(), id, session.CloudCredentials{
-		AWSRoleARN:    req.AWSRoleARN,
-		AWSExternalID: req.AWSExternalID,
-	}); err != nil {
+	if err := s.Manager.Destroy(r.Context(), id, req.toStartInput()); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -92,13 +111,13 @@ func (s *Server) handleValidateTask(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusConflict, "session is not ready (status: "+string(sess.Status)+")")
 		return
 	}
-	lab, ok := s.Catalog.Get(sess.LabID)
+	exam, ok := s.Catalog.Get(sess.ExamID)
 	if !ok {
-		writeError(w, http.StatusInternalServerError, "lab no longer in catalog")
+		writeError(w, http.StatusInternalServerError, "exam no longer in catalog")
 		return
 	}
 	taskIdx := -1
-	for i, t := range lab.Tasks {
+	for i, t := range exam.Tasks {
 		if t.ID == taskID {
 			taskIdx = i
 			break
@@ -108,7 +127,7 @@ func (s *Server) handleValidateTask(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "task not found")
 		return
 	}
-	results, err := validator.Run(r.Context(), lab.Tasks[taskIdx], sess.Kubeconfig)
+	results, err := validator.Run(r.Context(), exam.Tasks[taskIdx], sess.Kubeconfig)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return

@@ -19,10 +19,11 @@ const (
 	StatusDestroyed    Status = "destroyed"
 )
 
-// Session is the in-memory record for a single lab session.
+// Session is the in-memory record for a single exam session.
 type Session struct {
 	ID        string    `json:"id"`
-	LabID     string    `json:"lab_id"`
+	ExamID    string    `json:"exam_id"`
+	Provider  string    `json:"provider"`
 	Status    Status    `json:"status"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -59,11 +60,11 @@ func NewStore() *Store {
 var ErrNotFound = errors.New("session not found")
 
 // Create allocates a new session in the StatusProvisioning state.
-func (s *Store) Create(labID string) *Session {
+func (s *Store) Create(examID string) *Session {
 	now := time.Now().UTC()
 	sess := &Session{
 		ID:        uuid.NewString(),
-		LabID:     labID,
+		ExamID:    examID,
 		Status:    StatusProvisioning,
 		CreatedAt: now,
 		UpdatedAt: now,

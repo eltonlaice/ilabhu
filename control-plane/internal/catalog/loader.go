@@ -25,7 +25,7 @@ func Load(root string) (*Catalog, error) {
 		if err != nil {
 			return err
 		}
-		if d.IsDir() || filepath.Base(path) != "lab.yaml" {
+		if d.IsDir() || filepath.Base(path) != "exam.yaml" {
 			return nil
 		}
 		m, err := parseManifest(path)
@@ -33,7 +33,7 @@ func Load(root string) (*Catalog, error) {
 			return fmt.Errorf("%s: %w", path, err)
 		}
 		if existing, ok := c.labs[m.ID]; ok {
-			return fmt.Errorf("duplicate lab id %q (also defined in %s)", m.ID, existing.Dir)
+			return fmt.Errorf("duplicate exam id %q (also defined in %s)", m.ID, existing.Dir)
 		}
 		c.labs[m.ID] = m
 		return nil

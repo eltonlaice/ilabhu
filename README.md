@@ -5,15 +5,15 @@
 [![Go Reference](https://pkg.go.dev/badge/github.com/eltonlaice/ilabhu/control-plane.svg)](https://pkg.go.dev/github.com/eltonlaice/ilabhu/control-plane)
 [![Go Report Card](https://goreportcard.com/badge/github.com/eltonlaice/ilabhu/control-plane)](https://goreportcard.com/report/github.com/eltonlaice/ilabhu/control-plane)
 
-**Hands-on certification labs you run in your own cloud.**
+**Practice the full certification exam, on infrastructure you control.**
 
-Open source. Exam-focused (CKA, CKAD, CKS, RHCSA, ...). Provisioned in your own AWS, GCP or Azure account — no shared sandbox, no subscription.
+Open source. Exam-focused (CKA, CKAD, CKS, RHCSA, ...). Provisioned in your own AWS, GCP, Azure or DigitalOcean account — or on Linux servers you already own. No shared sandbox, no subscription.
 
 ---
 
 ## Why
 
-Preparing for certifications like the CKA or RHCSA requires real environments, not slideware. Existing platforms either:
+Preparing for certifications like the CKA or RHCSA needs realistic environments where you can drive the whole exam end-to-end, not micro-exercises that only test one objective. Existing platforms either:
 
 - charge a recurring subscription (KodeKloud, A Cloud Guru),
 - run on shared infrastructure you can't inspect or extend (Killercoda, iximiuz Labs),
@@ -21,52 +21,57 @@ Preparing for certifications like the CKA or RHCSA requires real environments, n
 
 `ilabhu` is different:
 
-- **Open source** (Apache 2.0). Fork it, self-host it, contribute labs.
-- **Bring your own cloud.** Connect your AWS / GCP / Azure account via short-lived assumed roles. No long-lived keys stored. Labs run on your infra, billed to you, destroyed automatically when the TTL expires.
-- **Exam-mapped content.** Each lab cites the exact exam objective it covers (e.g. *CKA 1.31 — Workloads & Scheduling — configure resource limits*).
+- **Open source** (Apache 2.0). Fork it, self-host it, contribute exams.
+- **Bring your own cloud or your own hosts.** Connect AWS / GCP / Azure / DigitalOcean via short-lived assumed credentials, or hand ilabhu a list of Linux servers you already operate. No long-lived keys stored. Resources you own, billing you control, lifecycle you decide.
+- **Exam-shaped content.** Each exam mirrors the real certification — multiple weighted domains, ~15-20 tasks, time-bounded, scored. Not a stack of disconnected micro-labs.
 - **Self-hostable.** A single `docker compose up` for individuals; a Kubernetes deploy for teams and training providers.
 
 ## Status
 
-Pre-alpha. Not usable yet. Roadmap below.
+Pre-alpha. Pipeline is wired (catalog, provisioning, validation) but only the AWS adapter and a single warm-up exam are shipped. See the roadmap below.
 
 ## How it works
 
 ```
-┌────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│  Web UI    │───▶│  Control plane   │───▶│  Terraform      │
-│ (Next.js)  │    │      (Go)        │    │  (your cloud)   │
-└────────────┘    └──────────────────┘    └────────┬────────┘
-                          │                        │
-                          │   AssumeRole / WIF     │
-                          │   (no static keys)     │
-                          ▼                        ▼
-                  ┌──────────────────┐    ┌─────────────────┐
-                  │  Validator       │◀───│  Lab VM(s)      │
-                  │  (kubectl/SSH)   │    │  + ilabhu-agent │
-                  └──────────────────┘    └─────────────────┘
+┌────────────┐    ┌──────────────────┐    ┌──────────────────────┐
+│  Web UI    │───▶│  Control plane   │───▶│  Provider adapter    │
+│ (Next.js)  │    │      (Go)        │    │  AWS · GCP · Azure   │
+└────────────┘    └──────────────────┘    │  DO · BYO-hosts      │
+                          │                └──────────┬───────────┘
+                          │   AssumeRole / WIF /      │
+                          │   SP / token / SSH key    │
+                          ▼                           ▼
+                  ┌──────────────────┐    ┌────────────────────────┐
+                  │  Validator       │◀───│  Exam environment      │
+                  │  (kubectl/SSH)   │    │  (your infra)          │
+                  └──────────────────┘    └────────────────────────┘
 ```
 
-A lab is a versioned directory under `labs/` containing:
+An exam is a versioned directory under `exams/` containing:
 
-- `lab.yaml` — metadata, instructions, tasks, validation rules
-- `terraform/` — a Terraform module that provisions the lab's infrastructure
+- `exam.yaml` — metadata, domains, tasks, validations, declared providers
+- `<provider>/` — one Terraform module (cloud) or one setup script (BYO-hosts) per declared provider
 
-When a user starts a lab, the control plane assumes a role in the user's cloud account, runs `terraform apply` against the lab module, opens a browser terminal, and runs the validation rules on demand.
+When a user starts a session, they pick a provider; the control plane uses the matching adapter to provision the environment in the user's account or hosts, opens a browser terminal, and runs the validation rules on demand.
 
-For the IAM role + external-id setup, see [docs/byo-cloud-setup.md](docs/byo-cloud-setup.md). For the full architecture, see [docs/architecture.md](docs/architecture.md).
+For the IAM role + external-id setup, see [docs/byo-cloud-setup.md](docs/byo-cloud-setup.md). For the full architecture, see [docs/architecture.md](docs/architecture.md). For the manifest schema, see [docs/exam-schema.md](docs/exam-schema.md).
 
 ## Roadmap
 
-- [ ] Lab manifest schema (`lab.yaml`) v1
-- [ ] First lab: CKA — pod with resource limits (AWS, single-node k3s)
-- [ ] Control plane: assume-role + terraform apply/destroy
-- [ ] Web UI: lab catalog, terminal (xterm.js), task checklist
-- [ ] Validator: kubectl + SSH check kinds
-- [ ] `docker compose` self-host
+- [x] Exam manifest schema (`exam.yaml`) v1, multi-provider
+- [x] First exam: CKA — warmup (single task, AWS)
+- [x] Control plane: AWS assume-role + terraform apply/destroy
+- [x] Web UI: exam catalog, exam detail, session monitor with kubeconfig download, per-task Validate
+- [x] Validator: kubectl checks
+- [ ] BYO-hosts adapter (SSH-driven setup/teardown)
+- [ ] DigitalOcean adapter
 - [ ] GCP and Azure adapters
-- [ ] CKAD, CKS, RHCSA lab packs
-- [ ] Lab authoring docs
+- [ ] Multi-node Terraform modules
+- [ ] Full CKA content (~17 tasks across all domains)
+- [ ] CKAD, CKS, RHCSA exam packs
+- [ ] Time-limit timer + weighted scoring UI
+- [ ] `docker compose` self-host
+- [ ] Authoring docs
 
 ## License
 
