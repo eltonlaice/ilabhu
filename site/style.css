@@ -1,0 +1,216 @@
+:root {
+  --bg: #faf8f3;
+  --fg: #1a1410;
+  --muted: #6b6258;
+  --accent: #9f3e26;
+  --line: #e7e1d6;
+  --code-bg: #1a1410;
+  --code-fg: #f5edd9;
+  --code-comment: #8a7e72;
+  --code-string: #d4a24c;
+  --code-number: #7fb285;
+  --max: 960px;
+  --radius: 6px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1a1410;
+    --fg: #f5edd9;
+    --muted: #a89e92;
+    --accent: #d4a24c;
+    --line: #2a221d;
+    --code-bg: #0e0a07;
+    --code-fg: #f5edd9;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover { text-decoration: underline; }
+
+code, pre {
+  font-family: "JetBrains Mono", ui-monospace, "SF Mono", Consolas, monospace;
+  font-size: 0.875rem;
+}
+
+.container {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 0 1.25rem;
+}
+
+/* Header / nav */
+header {
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+}
+.brand {
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--fg);
+}
+.brand:hover { text-decoration: none; }
+nav a {
+  color: var(--muted);
+  margin-left: 1rem;
+  font-size: 0.9rem;
+}
+nav a:hover { color: var(--fg); text-decoration: none; }
+nav a.github-link {
+  color: var(--fg);
+  font-weight: 500;
+}
+
+/* Hero */
+.hero {
+  padding: 4rem 1.25rem 3rem;
+}
+.eyebrow {
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin: 0 0 1rem;
+}
+.hero h1 {
+  font-size: clamp(1.875rem, 4vw, 2.75rem);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin: 0 0 1.25rem;
+  max-width: 30ch;
+}
+.lede {
+  font-size: 1.125rem;
+  color: var(--muted);
+  max-width: 60ch;
+  margin: 0 0 2rem;
+}
+.cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.cta {
+  display: inline-block;
+  padding: 0.625rem 1.125rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  color: var(--fg);
+  transition: border-color 0.1s, background 0.1s;
+}
+.cta:hover { text-decoration: none; border-color: var(--fg); }
+.cta.primary {
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
+}
+.cta.primary:hover { background: var(--accent); border-color: var(--accent); }
+
+/* Pillars */
+.pillars {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 2rem;
+  padding: 2rem 1.25rem 3rem;
+}
+.pillars article h3 {
+  font-size: 1rem;
+  margin: 0 0 0.5rem;
+  letter-spacing: -0.01em;
+}
+.pillars article p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+/* Sections */
+section.container {
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+}
+section h2 {
+  font-size: 1.5rem;
+  letter-spacing: -0.01em;
+  margin: 0 0 0.75rem;
+}
+.muted { color: var(--muted); }
+
+pre {
+  background: var(--code-bg);
+  color: var(--code-fg);
+  padding: 1.25rem;
+  border-radius: var(--radius);
+  overflow-x: auto;
+  margin: 1.25rem 0 0;
+}
+pre code { font-size: 0.825rem; line-height: 1.55; }
+
+pre .c { color: var(--code-comment); font-style: italic; }
+pre .s { color: var(--code-string); }
+pre .n { color: var(--code-number); }
+
+/* Status table */
+.status {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  font-size: 0.95rem;
+}
+.status td {
+  padding: 0.625rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.status td:last-child {
+  text-align: right;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+}
+.status td.ok { color: #4f7f4a; }
+.status td.todo { color: var(--muted); }
+@media (prefers-color-scheme: dark) {
+  .status td.ok { color: #7fb285; }
+}
+
+/* Final */
+.final-cta { padding-bottom: 4rem; }
+
+footer {
+  border-top: 1px solid var(--line);
+  padding: 2rem 0;
+  margin-top: 2rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+footer .container { padding: 0 1.25rem; }
+footer a { color: var(--muted); }
+footer a:hover { color: var(--fg); }
