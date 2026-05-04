@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ilabhu — Practice the full certification exam, on infrastructure you control</title>
+    <meta
+      name="description"
+      content="Open-source, self-hostable certification exam simulations (CKA, CKAD, CKS, RHCSA, ...) provisioned in your own AWS, GCP, Azure, or DigitalOcean account — or on Linux servers you already own."
+    />
+    <meta property="og:title" content="ilabhu" />
+    <meta
+      property="og:description"
+      content="Practice the full certification exam, on infrastructure you control."
+    />
+    <meta property="og:url" content="https://eltonlaice.github.io/ilabhu/" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header>
+      <div class="container nav">
+        <a href="/" class="brand">ilabhu</a>
+        <nav>
+          <a href="https://github.com/eltonlaice/ilabhu/blob/main/docs/architecture.md">Architecture</a>
+          <a href="https://github.com/eltonlaice/ilabhu/blob/main/docs/exam-schema.md">Schema</a>
+          <a href="https://github.com/eltonlaice/ilabhu/blob/main/docs/byo-cloud-setup.md">Setup</a>
+          <a class="github-link" href="https://github.com/eltonlaice/ilabhu">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero container">
+        <p class="eyebrow">Open source · Apache 2.0 · Pre-alpha</p>
+        <h1>Practice the full certification exam, on infrastructure you control.</h1>
+        <p class="lede">
+          ilabhu provisions a full exam environment (CKA, CKAD, CKS, RHCSA, ...) in your own cloud
+          account or on Linux servers you already own. Multi-domain, time-bounded, scored. No shared
+          sandbox, no subscription.
+        </p>
+        <div class="cta-row">
+          <a class="cta primary" href="https://github.com/eltonlaice/ilabhu#readme">Get started</a>
+          <a class="cta" href="https://github.com/eltonlaice/ilabhu">View on GitHub →</a>
+        </div>
+      </section>
+
+      <section class="pillars container">
+        <article>
+          <h3>BYO cloud or hosts</h3>
+          <p>
+            Run on AWS, GCP, Azure or DigitalOcean via short-lived assumed credentials, or hand
+            ilabhu a list of Linux servers you already operate. Resources you own, billing you
+            control, lifecycle you decide.
+          </p>
+        </article>
+        <article>
+          <h3>Exam-shaped</h3>
+          <p>
+            Each exam mirrors the real certification: weighted domains, ~15-20 tasks, time-bounded,
+            scored against a passing threshold. Not a stack of disconnected micro-labs.
+          </p>
+        </article>
+        <article>
+          <h3>Self-hostable</h3>
+          <p>
+            Open source under Apache 2.0. Fork it, run it on your own machine, contribute exams.
+            One Go binary plus a Next.js frontend.
+          </p>
+        </article>
+      </section>
+
+      <section class="container">
+        <h2>How it works</h2>
+        <p class="muted">
+          An exam is a versioned directory under <code>exams/</code> containing a manifest, one
+          Terraform module per supported cloud provider, and (optionally) a setup script for the
+          BYO-hosts adapter.
+        </p>
+        <pre><code><span class="c">## exams/cka/warmup/exam.yaml</span>
+schema_version: <span class="n">1</span>
+id: <span class="s">cka/warmup</span>
+exam: <span class="s">CKA</span>
+title: <span class="s">CKA — Warmup</span>
+time_limit_minutes: <span class="n">30</span>
+passing_score: <span class="n">100</span>
+
+domains:
+  - name: <span class="s">Workloads &amp; Scheduling</span>
+    weight: <span class="n">100</span>
+
+infrastructure:
+  ttl_minutes: <span class="n">120</span>
+  providers:
+    aws:
+      module: <span class="s">./aws</span>
+      inputs: { region: <span class="s">eu-west-1</span>, instance_type: <span class="s">t3.small</span> }
+    digitalocean:        <span class="c"># planned</span>
+    byo-hosts:           <span class="c"># planned</span>
+
+tasks:
+  - id: <span class="s">create-pod</span>
+    title: <span class="s">Create the Pod</span>
+    domain: <span class="s">Workloads &amp; Scheduling</span>
+    weight: <span class="n">100</span>
+    instructions: <span class="s">|</span>
+      <span class="s">Create a Pod nginx-limited with CPU 200m, memory 256Mi.</span>
+    validations:
+      - kind: <span class="s">kubectl</span>
+        args: [<span class="s">"get"</span>, <span class="s">"pod"</span>, <span class="s">"nginx-limited"</span>, <span class="s">"-o"</span>, <span class="s">"jsonpath={.status.phase}"</span>]
+        expect_equals: <span class="s">"Running"</span></code></pre>
+      </section>
+
+      <section class="container">
+        <h2>Status</h2>
+        <table class="status">
+          <tbody>
+            <tr><td>Manifest schema (multi-provider)</td><td class="ok">shipped</td></tr>
+            <tr><td>HTTP control plane (catalog, sessions, validation)</td><td class="ok">shipped</td></tr>
+            <tr><td>Web UI (catalog, exam detail, session monitor)</td><td class="ok">shipped</td></tr>
+            <tr><td>AWS provider adapter</td><td class="ok">shipped</td></tr>
+            <tr><td>Warm-up exam (single task)</td><td class="ok">shipped</td></tr>
+            <tr><td>BYO-hosts adapter (SSH-driven)</td><td class="todo">planned</td></tr>
+            <tr><td>DigitalOcean / GCP / Azure adapters</td><td class="todo">planned</td></tr>
+            <tr><td>Multi-node Terraform modules</td><td class="todo">planned</td></tr>
+            <tr><td>Full CKA / CKAD / CKS / RHCSA content</td><td class="todo">planned</td></tr>
+            <tr><td>Time-limit timer + weighted scoring UI</td><td class="todo">planned</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="container final-cta">
+        <h2>Try it locally</h2>
+        <pre><code>git clone https://github.com/eltonlaice/ilabhu
+cd ilabhu/control-plane &amp;&amp; go run ./cmd/ilabhud -addr :8080 -exams-dir ../exams &amp;
+cd ../web &amp;&amp; npm install &amp;&amp; npm run dev</code></pre>
+        <p class="muted">Then open <code>http://localhost:3000</code>.</p>
+      </section>
+    </main>
+
+    <footer>
+      <div class="container">
+        <p>
+          <a href="https://github.com/eltonlaice/ilabhu">github.com/eltonlaice/ilabhu</a>
+          · Apache 2.0
+          · Built by <a href="https://github.com/eltonlaice">@eltonlaice</a> from Maputo
+        </p>
+      </div>
+    </footer>
+  </body>
+</html>
