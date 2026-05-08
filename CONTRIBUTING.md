@@ -22,15 +22,20 @@ Prerequisites:
 - `kubectl`
 - `ssh` and `ssh-keygen`
 
-Build and run the control plane:
+From the repo root, the bundled `Makefile` covers the common workflows:
 
 ```sh
-cd control-plane
-go build ./...
-go vet ./...
-go test ./...
-go run ./cmd/ilabhud -addr :8080 -exams-dir ../exams
+make help        # list every target with its description
+make build       # build ilabhud into control-plane/bin/
+make test        # go test ./...
+make lint        # golangci-lint
+make run         # run ilabhud against ./exams on :8080
+make smoke       # start ilabhud, curl /healthz and /v1/exams, then stop
+make web-dev     # next dev on :3000
+make check       # vet + lint + test + web-lint + web-build (everything CI checks)
 ```
+
+Or invoke each step manually — see the `Makefile` and [`control-plane/README.md`](control-plane/README.md) for the underlying commands.
 
 See [`control-plane/README.md`](control-plane/README.md) for the full set of flags and runtime details.
 
