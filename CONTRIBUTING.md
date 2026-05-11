@@ -48,6 +48,10 @@ See [`control-plane/README.md`](control-plane/README.md) for the full set of fla
 5. Open the PR against `main`. Fill in what changed, why, and how it was verified. Link any related issue.
 6. CI must be green before merge. A maintainer will review and merge.
 
+### Coverage
+
+The Go workflow enforces a minimum overall coverage of **45%** for the `control-plane` packages. Run `make cover` locally to see the current number before opening a PR. If your PR adds significant code, please add tests so the gate continues to pass.
+
 ## Code style
 
 - **Go**: standard `gofmt`. Prefer `errors.New` and `fmt.Errorf` with `%w` wrapping. Use `slog` for logging — never `log.Printf`. Keep packages small and cohesive.

@@ -6,7 +6,7 @@
 # `help` target parses and renders.
 
 .DEFAULT_GOAL := help
-.PHONY: help build test lint vet fmt run web-install web-dev web-build web-lint smoke check clean
+.PHONY: help build test cover lint vet fmt run web-install web-dev web-build web-lint smoke check clean
 
 # ----- Backend (control-plane) -----
 
@@ -15,6 +15,10 @@ build: ## Build the ilabhud binary into control-plane/bin/
 
 test: ## Run all Go tests
 	cd control-plane && go test ./...
+
+cover: ## Run tests with coverage and print the summary (CI gate: 45%)
+	cd control-plane && go test -coverprofile=coverage.out -covermode=atomic ./...
+	cd control-plane && go tool cover -func=coverage.out | tail -1
 
 vet: ## Run `go vet`
 	cd control-plane && go vet ./...
