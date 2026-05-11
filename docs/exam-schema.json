@@ -1,0 +1,247 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/eltonlaice/ilabhu/main/docs/exam-schema.json",
+  "title": "ilabhu exam manifest",
+  "description": "Schema for exam.yaml under exams/<exam-code>/<slug>/.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "id",
+    "version",
+    "exam",
+    "title",
+    "summary",
+    "difficulty",
+    "estimated_minutes",
+    "time_limit_minutes",
+    "passing_score",
+    "domains",
+    "infrastructure",
+    "access",
+    "instructions",
+    "tasks"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Manifest schema version. Always 1 today."
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:[-_][a-z0-9]+)*/[a-z0-9]+(?:[-_][a-z0-9]+)*$",
+      "description": "Globally unique exam id, conventionally <exam-code>/<slug>, e.g. cka/warmup."
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Bumped when the exam changes in a way that invalidates in-flight sessions."
+    },
+    "exam": {
+      "type": "string",
+      "examples": ["CKA", "CKAD", "CKS", "RHCSA"],
+      "description": "Certification code."
+    },
+    "title": { "type": "string", "minLength": 1 },
+    "summary": { "type": "string", "minLength": 1 },
+    "difficulty": {
+      "type": "string",
+      "enum": ["easy", "medium", "hard"]
+    },
+    "estimated_minutes": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Informational estimate of how long the exam takes."
+    },
+    "time_limit_minutes": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Hard timer enforced by the UI."
+    },
+    "passing_score": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Minimum weighted score needed to pass (0-100)."
+    },
+    "domains": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Weighted curriculum areas. Weights should sum to 100.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "weight"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "weight": { "type": "integer", "minimum": 0, "maximum": 100 }
+        }
+      }
+    },
+    "infrastructure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ttl_minutes", "providers"],
+      "properties": {
+        "ttl_minutes": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum session lifetime before auto-destroy."
+        },
+        "providers": {
+          "type": "object",
+          "minProperties": 1,
+          "description": "Map of provider name to its provisioning spec. Cloud providers use Terraform; byo-hosts uses setup scripts.",
+          "additionalProperties": false,
+          "properties": {
+            "aws": { "$ref": "#/$defs/cloudProvider" },
+            "gcp": { "$ref": "#/$defs/cloudProvider" },
+            "azure": { "$ref": "#/$defs/cloudProvider" },
+            "digitalocean": { "$ref": "#/$defs/cloudProvider" },
+            "byo-hosts": { "$ref": "#/$defs/byoHostsProvider" }
+          }
+        }
+      }
+    },
+    "access": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "output"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["kubeconfig", "ssh"]
+        },
+        "output": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Name of the Terraform output the control plane reads (or the convention the byo-hosts setup script emits)."
+        }
+      }
+    },
+    "instructions": {
+      "type": "string",
+      "description": "Markdown displayed in the UI before tasks."
+    },
+    "tasks": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/task" }
+    }
+  },
+  "$defs": {
+    "cloudProvider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["module"],
+      "properties": {
+        "module": {
+          "type": "string",
+          "description": "Path relative to the exam directory, e.g. ./aws or ./digitalocean."
+        },
+        "inputs": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Variables passed to the Terraform module on apply."
+        }
+      }
+    },
+    "byoHostsProvider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["setup_script", "roles"],
+      "properties": {
+        "setup_script": {
+          "type": "string",
+          "description": "Path to an idempotent script run over SSH on each host."
+        },
+        "teardown_script": {
+          "type": "string",
+          "description": "Optional best-effort cleanup script."
+        },
+        "roles": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "count"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "count": { "type": "integer", "minimum": 1 },
+              "min_specs": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "cpu": { "type": "integer", "minimum": 1 },
+                  "ram_gb": { "type": "integer", "minimum": 1 },
+                  "distro": { "type": "string" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "instructions", "validations"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "title": { "type": "string", "minLength": 1 },
+        "domain": { "type": "string" },
+        "weight": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Weight inside the task's domain (sums to 100 across all tasks in that domain)."
+        },
+        "instructions": { "type": "string" },
+        "validations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/validation" }
+        }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["kubectl", "shell", "http"]
+        },
+        "args": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "script": { "type": "string" },
+        "url": { "type": "string", "format": "uri" },
+        "expect_equals": { "type": "string" },
+        "expect_contains": { "type": "string" },
+        "expect_exit_code": { "type": "integer" },
+        "expect_status": { "type": "integer" },
+        "expect_body_contains": { "type": "string" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "kind": { "const": "kubectl" } } },
+          "then": { "required": ["args"] }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "shell" } } },
+          "then": { "required": ["script"] }
+        },
+        {
+          "if": { "properties": { "kind": { "const": "http" } } },
+          "then": { "required": ["url"] }
+        }
+      ]
+    }
+  }
+}
