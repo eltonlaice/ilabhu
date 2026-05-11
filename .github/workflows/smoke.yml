@@ -1,0 +1,95 @@
+name: Smoke
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Opt actions into the Node.js 24 runtime ahead of the June 2026 cutover.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  smoke:
+    name: Smoke (catalog load + healthz)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: control-plane
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: stable
+          cache-dependency-path: control-plane/go.sum
+
+      - name: Build ilabhud
+        run: go build -o bin/ilabhud ./cmd/ilabhud
+
+      - name: Run ilabhud in background
+        run: |
+          mkdir -p /tmp/ilabhu-smoke
+          ./bin/ilabhud \
+            -addr :18080 \
+            -exams-dir ../exams \
+            -state-dir /tmp/ilabhu-smoke \
+            >/tmp/ilabhu-smoke.log 2>&1 &
+          echo $! > /tmp/ilabhu-smoke.pid
+
+      - name: Wait for /healthz
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:18080/healthz >/dev/null; then
+              echo "ilabhud up after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::ilabhud did not become healthy in 30s"
+          echo "--- ilabhud log ---"
+          cat /tmp/ilabhu-smoke.log
+          exit 1
+
+      - name: GET /healthz
+        run: |
+          body=$(curl -sf http://127.0.0.1:18080/healthz)
+          echo "$body"
+          echo "$body" | grep -q '"status":"ok"' || {
+            echo "::error::unexpected /healthz body"
+            exit 1
+          }
+
+      - name: GET /v1/exams (catalog loads at least one exam)
+        run: |
+          body=$(curl -sf http://127.0.0.1:18080/v1/exams)
+          echo "$body"
+          count=$(echo "$body" | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))')
+          if [ "$count" -lt 1 ]; then
+            echo "::error::catalog returned 0 exams"
+            exit 1
+          fi
+          echo "catalog returned $count exam(s)"
+
+      - name: GET /v1/exams/{warmup} surfaces tasks
+        run: |
+          body=$(curl -sf http://127.0.0.1:18080/v1/exams/cka/warmup)
+          echo "$body" | python3 -c '
+import json, sys
+d = json.load(sys.stdin)
+assert d["id"] == "cka/warmup", d["id"]
+assert "aws" in d["providers"], d["providers"]
+assert len(d["tasks"]) >= 1, d
+print("warmup ok:", d["title"])
+'
+
+      - name: Stop ilabhud
+        if: always()
+        run: |
+          pid=$(cat /tmp/ilabhu-smoke.pid 2>/dev/null || true)
+          [ -n "$pid" ] && kill "$pid" 2>/dev/null || true
+          echo "--- ilabhud log ---"
+          cat /tmp/ilabhu-smoke.log || true
