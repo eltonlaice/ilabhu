@@ -1,0 +1,44 @@
+name: Feature request
+description: Suggest a new capability, exam, provider, or improvement.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For larger changes (new providers, schema changes, new exam packs),
+        open the issue first so we can align on shape before code is written.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What can't you do today? Who is affected?
+      placeholder: |
+        Today only AWS is implemented. I run a homelab and don't have an
+        AWS account — I want to run an exam against the three Linux VMs
+        I already operate.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: What should ilabhu do? Sketch the API, schema, or UI as concretely as you can.
+      placeholder: |
+        Add a `byo-hosts` provider that accepts a list of {host, ssh_user,
+        ssh_key, role} and SSHes in to run a per-exam setup script.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What else could solve this? Why is your proposal better?
+  - type: dropdown
+    id: contributing
+    attributes:
+      label: Are you willing to contribute this?
+      options:
+        - "Yes — I'll open a PR"
+        - "Maybe — needs design discussion first"
+        - "No, but I can test"
+        - "No"

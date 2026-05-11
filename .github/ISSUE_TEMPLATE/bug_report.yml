@@ -1,0 +1,64 @@
+name: Bug report
+description: Something is broken or misbehaving.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file this. Before submitting, check
+        [docs/troubleshooting.md](https://github.com/eltonlaice/ilabhu/blob/main/docs/troubleshooting.md)
+        and the [open issues](https://github.com/eltonlaice/ilabhu/issues) to
+        see if it's already known.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: A clear description of the bug. Include the symptom (error message, wrong output, crash).
+      placeholder: ilabhud fails to start with `load catalog: ...`
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      placeholder: ilabhud should load the catalog and serve /v1/exams.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Smallest set of commands that surfaces the bug.
+      render: shell
+      placeholder: |
+        git clone https://github.com/eltonlaice/ilabhu
+        cd ilabhu && make run
+        # boom
+    validations:
+      required: true
+  - type: textarea
+    id: env
+    attributes:
+      label: Environment
+      description: OS, Go version (`go version`), Node version (`node --version`), terraform version (`terraform -version`).
+      placeholder: |
+        macOS 15.3 (arm64)
+        go version go1.26.3 darwin/arm64
+        node v22.10.0
+        Terraform v1.10.4
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Relevant ilabhud stdout, browser console errors, or `terraform apply` output.
+      render: shell
+  - type: input
+    id: version
+    attributes:
+      label: ilabhu commit
+      description: Output of `git rev-parse --short HEAD` in your working copy.
+      placeholder: e.g. 1df90c7
+    validations:
+      required: true

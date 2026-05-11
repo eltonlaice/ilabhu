@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security issue
+    url: https://github.com/eltonlaice/ilabhu/security/advisories/new
+    about: Report a vulnerability privately via GitHub Security Advisories. Do not open a public issue.
+  - name: Troubleshooting guide
+    url: https://github.com/eltonlaice/ilabhu/blob/main/docs/troubleshooting.md
+    about: Common errors and fixes — check here before filing a bug.

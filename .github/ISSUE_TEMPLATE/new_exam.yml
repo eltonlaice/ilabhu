@@ -1,0 +1,70 @@
+name: New exam proposal
+description: Propose a new certification exam to add to the catalog.
+labels: [exam, enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before opening this, skim [docs/authoring-an-exam.md](https://github.com/eltonlaice/ilabhu/blob/main/docs/authoring-an-exam.md)
+        and [docs/exam-schema.md](https://github.com/eltonlaice/ilabhu/blob/main/docs/exam-schema.md).
+  - type: input
+    id: exam
+    attributes:
+      label: Certification name and code
+      placeholder: CKAD — Certified Kubernetes Application Developer
+    validations:
+      required: true
+  - type: input
+    id: proposed_id
+    attributes:
+      label: Proposed exam id
+      description: Convention is `<exam-code>/<slug>`, e.g. `ckad/full`.
+      placeholder: ckad/full
+    validations:
+      required: true
+  - type: textarea
+    id: domains
+    attributes:
+      label: Domains and weights
+      description: Copy from the official curriculum. Weights should sum to 100.
+      render: markdown
+      placeholder: |
+        - Application Design and Build — 20
+        - Application Deployment — 20
+        - Application observability and maintenance — 15
+        - Application Environment, Configuration and Security — 25
+        - Services and Networking — 20
+    validations:
+      required: true
+  - type: input
+    id: time_limit
+    attributes:
+      label: Time limit (minutes)
+      placeholder: "120"
+    validations:
+      required: true
+  - type: input
+    id: passing_score
+    attributes:
+      label: Passing score (0-100)
+      placeholder: "66"
+    validations:
+      required: true
+  - type: checkboxes
+    id: providers
+    attributes:
+      label: Which providers will ship?
+      options:
+        - label: aws
+        - label: digitalocean
+        - label: gcp
+        - label: azure
+        - label: byo-hosts
+  - type: dropdown
+    id: contributing
+    attributes:
+      label: Are you authoring this exam?
+      options:
+        - "Yes — I'll open a PR"
+        - "I can help review"
+        - "No, just suggesting"
