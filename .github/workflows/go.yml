@@ -33,5 +33,25 @@ jobs:
       - name: Vet
         run: go vet ./...
 
-      - name: Test
-        run: go test -v ./...
+      - name: Test (with coverage)
+        run: go test -v -coverprofile=coverage.out -covermode=atomic ./...
+
+      - name: Coverage gate
+        env:
+          MIN_COVERAGE: "45.0"
+        run: |
+          total=$(go tool cover -func=coverage.out | awk '/^total:/ {gsub("%","",$3); print $3}')
+          echo "Total coverage: ${total}%"
+          go tool cover -func=coverage.out | tail -20
+          awk -v t="$total" -v m="$MIN_COVERAGE" 'BEGIN { exit (t+0 >= m+0) ? 0 : 1 }' || {
+            echo "::error::Coverage ${total}% is below the ${MIN_COVERAGE}% threshold."
+            exit 1
+          }
+
+      - name: Upload coverage profile
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-profile
+          path: control-plane/coverage.out
+          retention-days: 14
