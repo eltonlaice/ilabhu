@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/eltonlaice/ilabhu/main/docs/exam-schema.json
 schema_version: 1
 id: cka/warmup
 version: 1
