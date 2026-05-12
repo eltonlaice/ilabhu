@@ -20,6 +20,11 @@ import (
 // receives. Covers dotted IPv4, hostnames, and POSIX usernames.
 var validSSHIdentifier = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
 
+// validSSHTarget covers the `user@host` shape post-concatenation. The
+// callers re-check the full target before exec, which lets CodeQL's taint
+// tracker see a single regex-validated string flow into the command.
+var validSSHTarget = regexp.MustCompile(`^[a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+$`)
+
 // validateHostInput rejects byo-host entries whose ssh_user or address
 // contain anything outside [a-zA-Z0-9._-]. The catalog declares one role
 // shape per exam; the host details come straight from the start-session
@@ -32,6 +37,17 @@ func validateHostInput(h BYOHost) error {
 		return fmt.Errorf("host address %q contains characters outside [a-zA-Z0-9._-]", h.Address)
 	}
 	return nil
+}
+
+// safeTarget returns the validated `user@host` string for exec, or an
+// error if it doesn't match validSSHTarget. Centralising the regex check on
+// the concatenated value makes the data flow obvious to static analysis.
+func safeTarget(h BYOHost) (string, error) {
+	t := h.SSHUser + "@" + h.Address
+	if !validSSHTarget.MatchString(t) {
+		return "", fmt.Errorf("invalid ssh target %q", t)
+	}
+	return t, nil
 }
 
 // validateBYOHostsRoles checks that the user supplied at least the declared
@@ -91,7 +107,8 @@ func writePrivateKey(workdir, keyContent string) (string, error) {
 // validSSHIdentifier before they reach exec.CommandContext, so the argv we
 // hand to ssh/scp cannot be widened by user-supplied bytes.
 func runScriptOnHost(ctx context.Context, log *slog.Logger, keyPath, scriptPath string, host BYOHost) error {
-	if err := validateHostInput(host); err != nil {
+	target, err := safeTarget(host)
+	if err != nil {
 		return err
 	}
 	sshOpts := []string{
@@ -100,17 +117,20 @@ func runScriptOnHost(ctx context.Context, log *slog.Logger, keyPath, scriptPath 
 		"-o", "UserKnownHostsFile=/dev/null",
 		"-o", "ConnectTimeout=10",
 	}
-	target := host.SSHUser + "@" + host.Address
 	remote := "/tmp/ilabhu-script.sh"
 
 	scpArgs := append([]string{}, sshOpts...)
 	scpArgs = append(scpArgs, scriptPath, target+":"+remote)
+	// #nosec G204 -- target is validated against validSSHTarget; the rest of
+	// scpArgs is a fixed argv (no shell expansion).
 	if out, err := exec.CommandContext(ctx, "scp", scpArgs...).CombinedOutput(); err != nil {
 		return fmt.Errorf("scp script to %s: %w: %s", host.Address, err, out)
 	}
 
 	sshArgs := append([]string{}, sshOpts...)
 	sshArgs = append(sshArgs, target, "chmod", "+x", remote, "&&", "sudo", "-E", remote)
+	// #nosec G204 -- same validation as above; ssh treats target as the
+	// destination, the rest are fixed strings.
 	cmd := exec.CommandContext(ctx, "ssh", sshArgs...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
