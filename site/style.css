@@ -85,6 +85,12 @@ nav a:hover { color: var(--fg); text-decoration: none; }
 nav a.github-link {
   color: var(--fg);
   font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+nav a.github-link .icon {
+  vertical-align: middle;
 }
 
 /* Hero */
@@ -126,6 +132,12 @@ nav a.github-link {
   transition: border-color 0.1s, background 0.1s;
 }
 .cta:hover { text-decoration: none; border-color: var(--fg); }
+.cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.cta .icon { display: inline-block; }
 .cta.primary {
   background: var(--fg);
   color: var(--bg);
