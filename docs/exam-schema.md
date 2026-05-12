@@ -124,7 +124,7 @@ tasks:
 | `kind` | Inputs | Pass condition |
 |---|---|---|
 | `kubectl` | `args` (list), `expect_equals` \| `expect_contains` \| `expect_exit_code` | stdout / exit code matches |
-| `shell` | `script` (string, runs over SSH on a chosen host), `expect_exit_code` (default `0`) | exit code matches *(planned)* |
+| `shell` | `script` (piped to `/bin/sh` over SSH on the access host), `expect_exit_code` (default `0`), `expect_equals` \| `expect_contains` against the trimmed combined stdout+stderr | exit code matches expectation and any string assertion passes |
 | `http` | `url`, `expect_status` (default `200`), `expect_body_contains` | response matches *(planned)* |
 
 Validations within a task are evaluated in order; all must pass for the task to be marked complete.
