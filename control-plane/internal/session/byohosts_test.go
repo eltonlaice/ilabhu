@@ -98,6 +98,36 @@ func TestPickAccessHost_FallsBackToFirst(t *testing.T) {
 	}
 }
 
+func TestValidateHostInput_AcceptsCommonShapes(t *testing.T) {
+	cases := []BYOHost{
+		{Address: "10.0.0.1", SSHUser: "ubuntu"},
+		{Address: "203.0.113.42", SSHUser: "root"},
+		{Address: "lab.example.com", SSHUser: "lab-runner"},
+		{Address: "host_01.internal", SSHUser: "ec2-user"},
+	}
+	for _, h := range cases {
+		if err := validateHostInput(h); err != nil {
+			t.Errorf("validateHostInput(%+v): %v", h, err)
+		}
+	}
+}
+
+func TestValidateHostInput_RejectsShellMetacharacters(t *testing.T) {
+	cases := []BYOHost{
+		{Address: "10.0.0.1; rm -rf /", SSHUser: "ubuntu"},
+		{Address: "10.0.0.1", SSHUser: "ubuntu$(whoami)"},
+		{Address: "10.0.0.1 && evil", SSHUser: "ubuntu"},
+		{Address: "10.0.0.1", SSHUser: "ubuntu`id`"},
+		{Address: "host with space", SSHUser: "ubuntu"},
+		{Address: "10.0.0.1", SSHUser: "u/with/slash"},
+	}
+	for _, h := range cases {
+		if err := validateHostInput(h); err == nil {
+			t.Errorf("validateHostInput(%+v) should have rejected", h)
+		}
+	}
+}
+
 func TestWritePrivateKey_WritesWithRestrictedPerms(t *testing.T) {
 	dir := t.TempDir()
 	path, err := writePrivateKey(dir, "-----BEGIN OPENSSH PRIVATE KEY-----\nxxx\n-----END OPENSSH PRIVATE KEY-----\n")

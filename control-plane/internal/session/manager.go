@@ -160,6 +160,9 @@ func validateProviderInput(input StartInput) error {
 			if h.SSHUser == "" {
 				return fmt.Errorf("byo-hosts.hosts[%d].ssh_user is required", i)
 			}
+			if err := validateHostInput(h); err != nil {
+				return fmt.Errorf("byo-hosts.hosts[%d]: %w", i, err)
+			}
 		}
 	default:
 		return fmt.Errorf("provider %q not implemented yet", input.Provider)

@@ -8,9 +8,31 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 
 	"github.com/eltonlaice/ilabhu/control-plane/internal/catalog"
 )
+
+// validSSHIdentifier matches the conservative subset of characters that
+// hostname, IP address and ssh-user fields are allowed to contain. Anything
+// outside this set is rejected before reaching the exec.CommandContext call
+// so user input never widens the argv our shell-less ssh invocation
+// receives. Covers dotted IPv4, hostnames, and POSIX usernames.
+var validSSHIdentifier = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
+
+// validateHostInput rejects byo-host entries whose ssh_user or address
+// contain anything outside [a-zA-Z0-9._-]. The catalog declares one role
+// shape per exam; the host details come straight from the start-session
+// request, so this is the boundary where untrusted bytes get filtered.
+func validateHostInput(h BYOHost) error {
+	if !validSSHIdentifier.MatchString(h.SSHUser) {
+		return fmt.Errorf("host %s: ssh_user %q contains characters outside [a-zA-Z0-9._-]", h.Address, h.SSHUser)
+	}
+	if !validSSHIdentifier.MatchString(h.Address) {
+		return fmt.Errorf("host address %q contains characters outside [a-zA-Z0-9._-]", h.Address)
+	}
+	return nil
+}
 
 // validateBYOHostsRoles checks that the user supplied at least the declared
 // number of hosts for every role the exam's byo-hosts spec requires. Extra
@@ -64,7 +86,14 @@ func writePrivateKey(workdir, keyContent string) (string, error) {
 // runScriptOnHost SCPs scriptPath onto host, makes it executable, runs it,
 // and returns any error. Stdout/stderr are tee'd through the manager's
 // logger.
+//
+// Host details (ssh_user, address) are validated against
+// validSSHIdentifier before they reach exec.CommandContext, so the argv we
+// hand to ssh/scp cannot be widened by user-supplied bytes.
 func runScriptOnHost(ctx context.Context, log *slog.Logger, keyPath, scriptPath string, host BYOHost) error {
+	if err := validateHostInput(host); err != nil {
+		return err
+	}
 	sshOpts := []string{
 		"-i", keyPath,
 		"-o", "StrictHostKeyChecking=no",
