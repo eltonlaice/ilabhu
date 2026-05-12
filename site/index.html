@@ -3,19 +3,147 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ilabhu — Practice the full certification exam, on infrastructure you control</title>
+    <title>ilabhu — Open-source certification exam simulator (CKA, CKAD, CKS, RHCSA) on your own cloud or Linux hosts</title>
     <meta
       name="description"
-      content="Open-source, self-hostable certification exam simulations (CKA, CKAD, CKS, RHCSA, ...) provisioned in your own AWS, GCP, Azure, or DigitalOcean account — or on Linux servers you already own."
+      content="Open-source, self-hostable certification exam simulations (CKA, CKAD, CKS, RHCSA, ...) provisioned in your own AWS, GCP, Azure, or DigitalOcean account — or on Linux servers you already own. Apache 2.0."
     />
-    <meta property="og:title" content="ilabhu" />
+    <meta name="keywords" content="CKA, CKAD, CKS, RHCSA, Kubernetes certification, certification exam simulator, Kubernetes practice, exam practice, self-hosted, BYO cloud, BYO hosts, Terraform, open source, Apache 2.0" />
+    <meta name="author" content="Elton Laice" />
+    <meta name="theme-color" content="#1a1410" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="ilabhu" />
+    <meta property="og:title" content="ilabhu — Open-source certification exam simulator" />
     <meta
       property="og:description"
-      content="Practice the full certification exam, on infrastructure you control."
+      content="Practice the full certification exam (CKA, CKAD, CKS, RHCSA) on infrastructure you control — your own cloud account or Linux hosts. Apache 2.0."
     />
     <meta property="og:url" content="https://ilabhu.com/" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:image" content="https://ilabhu.com/og-image.svg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="ilabhu — Practice the full certification exam, on infrastructure you control" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="ilabhu — Open-source certification exam simulator" />
+    <meta name="twitter:description" content="CKA, CKAD, CKS, RHCSA exam simulations in your own cloud or Linux hosts. Apache 2.0." />
+    <meta name="twitter:image" content="https://ilabhu.com/og-image.svg" />
+    <meta name="twitter:image:alt" content="ilabhu — Practice the full certification exam, on infrastructure you control" />
+
     <link rel="canonical" href="https://ilabhu.com/" />
+    <link rel="alternate" type="application/rss+xml" title="ilabhu releases" href="https://github.com/eltonlaice/ilabhu/releases.atom" />
     <link rel="stylesheet" href="style.css" />
+
+    <!-- Structured data for search engines and LLM citations -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://ilabhu.com/#website",
+          "url": "https://ilabhu.com/",
+          "name": "ilabhu",
+          "description": "Open-source certification exam simulator. Practice the full CKA, CKAD, CKS, RHCSA exam on infrastructure you control.",
+          "inLanguage": "en",
+          "publisher": { "@id": "https://ilabhu.com/#org" }
+        },
+        {
+          "@type": "Organization",
+          "@id": "https://ilabhu.com/#org",
+          "name": "ilabhu",
+          "url": "https://ilabhu.com/",
+          "logo": "https://ilabhu.com/og-image.svg",
+          "sameAs": [
+            "https://github.com/eltonlaice/ilabhu"
+          ],
+          "founder": {
+            "@type": "Person",
+            "name": "Elton Laice",
+            "url": "https://github.com/eltonlaice"
+          }
+        },
+        {
+          "@type": "SoftwareApplication",
+          "name": "ilabhu",
+          "applicationCategory": "DeveloperApplication",
+          "operatingSystem": "Linux, macOS",
+          "url": "https://ilabhu.com/",
+          "downloadUrl": "https://github.com/eltonlaice/ilabhu",
+          "softwareVersion": "pre-alpha",
+          "license": "https://www.apache.org/licenses/LICENSE-2.0",
+          "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+          "description": "Open-source, self-hostable certification exam simulator for CKA, CKAD, CKS, RHCSA. Provisions the full exam environment in the user's own AWS, GCP, Azure or DigitalOcean account, or on Linux servers the user already operates.",
+          "featureList": [
+            "Multi-provider: AWS, DigitalOcean, GCP, Azure, BYO-hosts",
+            "Time-bounded sessions with weighted scoring",
+            "Deterministic validations: kubectl, shell over SSH, http",
+            "Self-hostable Go control plane + Next.js frontend",
+            "Apache 2.0 license"
+          ]
+        },
+        {
+          "@type": "SoftwareSourceCode",
+          "name": "ilabhu",
+          "codeRepository": "https://github.com/eltonlaice/ilabhu",
+          "programmingLanguage": ["Go", "TypeScript", "HCL", "Bash"],
+          "license": "https://www.apache.org/licenses/LICENSE-2.0",
+          "runtimePlatform": "Linux"
+        },
+        {
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "What is ilabhu?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "ilabhu is an open-source, self-hostable certification exam simulator for cloud certifications like CKA, CKAD, CKS, and RHCSA. It provisions the full exam environment — multi-domain, time-bounded, scored — in the user's own AWS, GCP, Azure, or DigitalOcean account, or on Linux servers the user already operates."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Is ilabhu free?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes. ilabhu is Apache 2.0 licensed and there is no SaaS tier. You run the control plane yourself and pay your own infrastructure costs (around $0.04–$0.08 per two-hour cloud session), or pay nothing by using the BYO-hosts adapter with servers you already operate."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Which cloud providers does ilabhu support?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "All five declared providers ship today: AWS (sts:AssumeRole + external id), DigitalOcean (Personal Access Token), Google Cloud (Service Account key), Azure (Service Principal with client secret), and BYO-hosts (your own Linux servers reachable over SSH)."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "How is ilabhu different from Killercoda or KodeKloud?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Killercoda and KodeKloud run on shared infrastructure with their own subscription model. ilabhu is open source, runs in your account or on your hardware, and ships full exam-shaped simulations (~15–20 tasks per exam, weighted scoring, time limit) instead of disconnected micro-labs."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Can I add my own exam?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes. An exam is a versioned directory under exams/ with an exam.yaml manifest (validated against a JSON Schema), one Terraform module per supported cloud provider, and an optional BYO-hosts setup script. See docs/authoring-an-exam.md."
+              }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
   </head>
   <body>
     <header>
@@ -138,6 +266,65 @@ tasks:
 cd ilabhu/control-plane &amp;&amp; go run ./cmd/ilabhud -addr :8080 -exams-dir ../exams &amp;
 cd ../web &amp;&amp; npm install &amp;&amp; npm run dev</code></pre>
         <p class="muted">Then open <code>http://localhost:3000</code>.</p>
+      </section>
+
+      <section class="container faq" id="faq">
+        <h2>Frequently asked</h2>
+        <article>
+          <h3>What is ilabhu?</h3>
+          <p>
+            ilabhu is an open-source, self-hostable certification exam
+            simulator for cloud certifications like CKA, CKAD, CKS and
+            RHCSA. It provisions the full exam environment — multi-domain,
+            time-bounded, scored — in the user's own AWS, GCP, Azure or
+            DigitalOcean account, or on Linux servers the user already
+            operates.
+          </p>
+        </article>
+        <article>
+          <h3>Is ilabhu free?</h3>
+          <p>
+            Yes. ilabhu is licensed Apache 2.0 and there is no SaaS tier.
+            You run the control plane yourself and pay your own
+            infrastructure costs (~$0.04–$0.08 per two-hour cloud session),
+            or nothing at all with the BYO-hosts adapter and a Linux
+            server you already operate.
+          </p>
+        </article>
+        <article>
+          <h3>Which cloud providers are supported?</h3>
+          <p>
+            All five declared providers ship today: <strong>AWS</strong>
+            (<code>sts:AssumeRole</code> + external id),
+            <strong>DigitalOcean</strong> (Personal Access Token),
+            <strong>Google Cloud</strong> (Service Account key),
+            <strong>Azure</strong> (Service Principal with client secret)
+            and <strong>BYO-hosts</strong> (your own Linux servers reachable
+            over SSH).
+          </p>
+        </article>
+        <article>
+          <h3>How is ilabhu different from Killercoda or KodeKloud?</h3>
+          <p>
+            Killercoda and KodeKloud run on shared infrastructure under
+            their own subscription. ilabhu is open source, runs in your
+            account or on your hardware, and ships
+            <strong>full exam-shaped simulations</strong> (~15–20 tasks,
+            weighted domains, scored, time-bounded) instead of disconnected
+            micro-labs.
+          </p>
+        </article>
+        <article>
+          <h3>Can I add my own exam?</h3>
+          <p>
+            Yes. An exam is a versioned directory under <code>exams/</code>
+            with an <code>exam.yaml</code> manifest (validated against a
+            <a href="https://github.com/eltonlaice/ilabhu/blob/main/docs/exam-schema.json">JSON Schema</a>),
+            one Terraform module per supported cloud provider, and an
+            optional BYO-hosts setup script. See
+            <a href="https://github.com/eltonlaice/ilabhu/blob/main/docs/authoring-an-exam.md">docs/authoring-an-exam.md</a>.
+          </p>
+        </article>
       </section>
     </main>
 
