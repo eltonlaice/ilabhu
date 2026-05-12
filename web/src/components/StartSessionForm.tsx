@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   startSession,
+  type BYOHost,
   type Provider,
   type ProviderCredentials,
 } from "@/lib/api";
@@ -16,7 +17,13 @@ const PROVIDER_LABELS: Record<Provider, string> = {
   "byo-hosts": "Your Linux hosts",
 };
 
-const IMPLEMENTED: Provider[] = ["aws", "digitalocean", "gcp", "azure"];
+const IMPLEMENTED: Provider[] = [
+  "aws",
+  "digitalocean",
+  "gcp",
+  "azure",
+  "byo-hosts",
+];
 
 type Props = {
   examID: string;
@@ -40,6 +47,10 @@ export function StartSessionForm({ examID, providers }: Props) {
   const [azureSubscriptionId, setAzureSubscriptionId] = useState("");
   const [azureClientId, setAzureClientId] = useState("");
   const [azureClientSecret, setAzureClientSecret] = useState("");
+  const [byoSshKey, setByoSshKey] = useState("");
+  const [byoHosts, setByoHosts] = useState<BYOHost[]>([
+    { role: "node", address: "", ssh_user: "ubuntu" },
+  ]);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -84,6 +95,31 @@ export function StartSessionForm({ examID, providers }: Props) {
           client_id: azureClientId.trim(),
           client_secret: azureClientSecret.trim(),
         },
+      };
+    } else if (provider === "byo-hosts") {
+      const key = byoSshKey.trim();
+      if (!key.includes("PRIVATE KEY")) {
+        setError(
+          "SSH private key looks invalid. Paste the contents of the PEM file (BEGIN/END PRIVATE KEY blocks).",
+        );
+        setSubmitting(false);
+        return;
+      }
+      const hosts = byoHosts
+        .map((h) => ({
+          role: h.role.trim(),
+          address: h.address.trim(),
+          ssh_user: h.ssh_user.trim(),
+        }))
+        .filter((h) => h.address);
+      if (hosts.length === 0) {
+        setError("Add at least one host.");
+        setSubmitting(false);
+        return;
+      }
+      creds = {
+        provider,
+        byo_hosts: { ssh_private_key: key, hosts },
       };
     } else {
       setError(`Provider ${provider} is not implemented yet.`);
@@ -163,6 +199,13 @@ export function StartSessionForm({ examID, providers }: Props) {
           setClientId={setAzureClientId}
           clientSecret={azureClientSecret}
           setClientSecret={setAzureClientSecret}
+        />
+      ) : provider === "byo-hosts" ? (
+        <BYOHostsFields
+          sshKey={byoSshKey}
+          setSshKey={setByoSshKey}
+          hosts={byoHosts}
+          setHosts={setByoHosts}
         />
       ) : (
         <p className="text-sm text-neutral-500">
@@ -247,6 +290,112 @@ function AWSFields({
         <p className="mt-1 text-xs text-neutral-500">
           Stored in <code className="font-mono">sessionStorage</code> only —
           never sent to anywhere except the control plane on this same origin.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function BYOHostsFields({
+  sshKey,
+  setSshKey,
+  hosts,
+  setHosts,
+}: {
+  sshKey: string;
+  setSshKey: (v: string) => void;
+  hosts: BYOHost[];
+  setHosts: (v: BYOHost[]) => void;
+}) {
+  const inputClass =
+    "block w-full rounded-md border border-neutral-300 bg-white px-3 py-2 font-mono text-xs shadow-sm focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500 dark:border-neutral-700 dark:bg-neutral-950";
+
+  function updateHost(i: number, patch: Partial<BYOHost>) {
+    setHosts(hosts.map((h, idx) => (idx === i ? { ...h, ...patch } : h)));
+  }
+  function addHost() {
+    setHosts([...hosts, { role: "node", address: "", ssh_user: "ubuntu" }]);
+  }
+  function removeHost(i: number) {
+    setHosts(hosts.filter((_, idx) => idx !== i));
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <label
+          htmlFor="byo-key"
+          className="block text-sm font-medium text-neutral-700 dark:text-neutral-300"
+        >
+          SSH private key
+        </label>
+        <textarea
+          id="byo-key"
+          required
+          rows={6}
+          value={sshKey}
+          onChange={(e) => setSshKey(e.target.value)}
+          placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;...&#10;-----END OPENSSH PRIVATE KEY-----"
+          className={inputClass}
+        />
+        <p className="mt-1 text-xs text-neutral-500">
+          One key with access to every host you list below. Stored in{" "}
+          <code className="font-mono">sessionStorage</code> only — never sent
+          anywhere except the control plane on this same origin.
+        </p>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+          Hosts
+        </label>
+        <div className="mt-2 space-y-2">
+          {hosts.map((h, i) => (
+            <div
+              key={i}
+              className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_2fr_1fr_auto]"
+            >
+              <input
+                placeholder="role"
+                value={h.role}
+                onChange={(e) => updateHost(i, { role: e.target.value })}
+                className={inputClass}
+              />
+              <input
+                required
+                placeholder="address (ip or hostname)"
+                value={h.address}
+                onChange={(e) => updateHost(i, { address: e.target.value })}
+                className={inputClass}
+              />
+              <input
+                placeholder="ssh user"
+                value={h.ssh_user}
+                onChange={(e) => updateHost(i, { ssh_user: e.target.value })}
+                className={inputClass}
+              />
+              <button
+                type="button"
+                onClick={() => removeHost(i)}
+                disabled={hosts.length === 1}
+                className="rounded-md border border-neutral-300 px-2 py-1 text-xs text-neutral-600 hover:bg-neutral-50 disabled:opacity-30 dark:border-neutral-700 dark:text-neutral-400 dark:hover:bg-neutral-900"
+                title={hosts.length === 1 ? "Need at least one host" : "Remove"}
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={addHost}
+          className="mt-2 rounded-md border border-neutral-300 px-3 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-50 dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-900"
+        >
+          + Add host
+        </button>
+        <p className="mt-2 text-xs text-neutral-500">
+          Role names must match the exam&apos;s declared roles. For the
+          warmup, a single host with role <code>node</code> is enough.
         </p>
       </div>
     </div>

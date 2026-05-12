@@ -37,16 +37,30 @@ type azureCredsBody struct {
 	ClientSecret   string `json:"client_secret"`
 }
 
+// byoHostBody is one user-supplied Linux server in the byo-hosts payload.
+type byoHostBody struct {
+	Role    string `json:"role"`
+	Address string `json:"address"`
+	SSHUser string `json:"ssh_user"`
+}
+
+// byoHostsCredsBody is the BYO-hosts provider credentials block.
+type byoHostsCredsBody struct {
+	SSHPrivateKey string        `json:"ssh_private_key"`
+	Hosts         []byoHostBody `json:"hosts"`
+}
+
 // sessionRequest is the create- and destroy-session request body. Each
 // supported provider has its own optional block; the active one is selected
 // by the `provider` discriminator.
 type sessionRequest struct {
-	ExamID       string          `json:"exam_id,omitempty"`
-	Provider     string          `json:"provider"`
-	AWS          *awsCredsBody   `json:"aws,omitempty"`
-	DigitalOcean *doCredsBody    `json:"digitalocean,omitempty"`
-	GCP          *gcpCredsBody   `json:"gcp,omitempty"`
-	Azure        *azureCredsBody `json:"azure,omitempty"`
+	ExamID       string             `json:"exam_id,omitempty"`
+	Provider     string             `json:"provider"`
+	AWS          *awsCredsBody      `json:"aws,omitempty"`
+	DigitalOcean *doCredsBody       `json:"digitalocean,omitempty"`
+	GCP          *gcpCredsBody      `json:"gcp,omitempty"`
+	Azure        *azureCredsBody    `json:"azure,omitempty"`
+	BYOHosts     *byoHostsCredsBody `json:"byo_hosts,omitempty"`
 }
 
 func (r *sessionRequest) toStartInput() session.StartInput {
@@ -73,6 +87,20 @@ func (r *sessionRequest) toStartInput() session.StartInput {
 			SubscriptionID: r.Azure.SubscriptionID,
 			ClientID:       r.Azure.ClientID,
 			ClientSecret:   r.Azure.ClientSecret,
+		}
+	}
+	if r.BYOHosts != nil {
+		hosts := make([]session.BYOHost, 0, len(r.BYOHosts.Hosts))
+		for _, h := range r.BYOHosts.Hosts {
+			hosts = append(hosts, session.BYOHost{
+				Role:    h.Role,
+				Address: h.Address,
+				SSHUser: h.SSHUser,
+			})
+		}
+		in.BYOHosts = &session.BYOHostsCredentials{
+			SSHPrivateKey: r.BYOHosts.SSHPrivateKey,
+			Hosts:         hosts,
 		}
 	}
 	return in
