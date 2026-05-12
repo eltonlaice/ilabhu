@@ -11,6 +11,21 @@ import (
 	"github.com/eltonlaice/ilabhu/control-plane/internal/catalog"
 )
 
+// Access carries everything a validation kind might need to reach the
+// session's environment. Each kind reads the subset it needs; missing fields
+// produce a clear per-validation failure rather than a fatal error.
+type Access struct {
+	// Kubeconfig is the contents of the session's kubeconfig file. Required
+	// for kind: kubectl.
+	Kubeconfig []byte
+	// SSHKeyPath, SSHUser and SSHHost describe how to reach the exam VM
+	// (for single-node exams, the only host; for multi-node, the access host
+	// reported by the Terraform module). Required for kind: shell.
+	SSHKeyPath string
+	SSHUser    string
+	SSHHost    string
+}
+
 // Result is the outcome of one validation rule.
 type Result struct {
 	Index   int    `json:"index"`
@@ -21,12 +36,17 @@ type Result struct {
 
 // Run evaluates each validation in `task` in order. Validations run regardless
 // of earlier failures so the caller sees the full picture.
-func Run(ctx context.Context, task catalog.Task, kubeconfig []byte) ([]Result, error) {
-	kubePath, cleanup, err := writeKubeconfig(kubeconfig)
-	if err != nil {
-		return nil, err
+func Run(ctx context.Context, task catalog.Task, access Access) ([]Result, error) {
+	var kubePath string
+	var cleanup func()
+	if hasKubectl(task) {
+		var err error
+		kubePath, cleanup, err = writeKubeconfig(access.Kubeconfig)
+		if err != nil {
+			return nil, err
+		}
+		defer cleanup()
 	}
-	defer cleanup()
 
 	results := make([]Result, 0, len(task.Validations))
 	for i, v := range task.Validations {
@@ -34,6 +54,8 @@ func Run(ctx context.Context, task catalog.Task, kubeconfig []byte) ([]Result, e
 		switch v.Kind {
 		case "kubectl":
 			r.Passed, r.Message = runKubectl(ctx, kubePath, v)
+		case "shell":
+			r.Passed, r.Message = runShell(ctx, access, v)
 		default:
 			r.Passed = false
 			r.Message = fmt.Sprintf("validation kind %q not implemented", v.Kind)
@@ -41,6 +63,15 @@ func Run(ctx context.Context, task catalog.Task, kubeconfig []byte) ([]Result, e
 		results = append(results, r)
 	}
 	return results, nil
+}
+
+func hasKubectl(task catalog.Task) bool {
+	for _, v := range task.Validations {
+		if v.Kind == "kubectl" {
+			return true
+		}
+	}
+	return false
 }
 
 func runKubectl(ctx context.Context, kubeconfigPath string, v catalog.Validation) (bool, string) {
@@ -67,6 +98,54 @@ func runKubectl(ctx context.Context, kubeconfigPath string, v catalog.Validation
 
 	if err != nil {
 		return false, fmt.Sprintf("kubectl failed: %v: %s", err, got)
+	}
+	if v.ExpectEquals != nil && got != *v.ExpectEquals {
+		return false, fmt.Sprintf("expected %q, got %q", *v.ExpectEquals, got)
+	}
+	if v.ExpectContains != nil && !strings.Contains(got, *v.ExpectContains) {
+		return false, fmt.Sprintf("expected output to contain %q, got %q", *v.ExpectContains, got)
+	}
+	return true, ""
+}
+
+// runShell pipes v.Script over SSH to /bin/sh on the exam host. Default pass
+// condition is exit code 0; expect_exit_code overrides; expect_contains and
+// expect_equals match against the captured stdout+stderr.
+func runShell(ctx context.Context, access Access, v catalog.Validation) (bool, string) {
+	if v.Script == "" {
+		return false, "shell validation requires a non-empty script"
+	}
+	if access.SSHKeyPath == "" || access.SSHUser == "" || access.SSHHost == "" {
+		return false, "session has no SSH access for shell validations"
+	}
+
+	cmd := exec.CommandContext(ctx, "ssh",
+		"-i", access.SSHKeyPath,
+		"-o", "StrictHostKeyChecking=no",
+		"-o", "UserKnownHostsFile=/dev/null",
+		"-o", "ConnectTimeout=10",
+		access.SSHUser+"@"+access.SSHHost,
+		"/bin/sh", "-s",
+	)
+	cmd.Stdin = strings.NewReader(v.Script)
+	out, err := cmd.CombinedOutput()
+	got := strings.TrimSpace(string(out))
+
+	expectExit := 0
+	if v.ExpectExitCode != nil {
+		expectExit = *v.ExpectExitCode
+	}
+	actualExit := 0
+	if err != nil {
+		var ee *exec.ExitError
+		if errors.As(err, &ee) {
+			actualExit = ee.ExitCode()
+		} else {
+			return false, fmt.Sprintf("ssh run error: %v", err)
+		}
+	}
+	if actualExit != expectExit {
+		return false, fmt.Sprintf("expected exit code %d, got %d (%s)", expectExit, actualExit, got)
 	}
 	if v.ExpectEquals != nil && got != *v.ExpectEquals {
 		return false, fmt.Sprintf("expected %q, got %q", *v.ExpectEquals, got)

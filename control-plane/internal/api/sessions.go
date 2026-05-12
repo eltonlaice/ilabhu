@@ -127,7 +127,13 @@ func (s *Server) handleValidateTask(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "task not found")
 		return
 	}
-	results, err := validator.Run(r.Context(), exam.Tasks[taskIdx], sess.Kubeconfig)
+	access := validator.Access{
+		Kubeconfig: sess.Kubeconfig,
+		SSHKeyPath: sess.SSHPrivateKeyPath,
+		SSHUser:    outputString(sess.Outputs, "ssh_user"),
+		SSHHost:    outputString(sess.Outputs, "public_ip"),
+	}
+	results, err := validator.Run(r.Context(), exam.Tasks[taskIdx], access)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -144,4 +150,14 @@ func (s *Server) handleValidateTask(w http.ResponseWriter, r *http.Request) {
 		"all_passed": allPassed,
 		"results":    results,
 	})
+}
+
+// outputString returns m[key] coerced to a string, or "" if the value is
+// missing or not a string. Terraform outputs are loaded as map[string]any
+// so the kind assertion is the path of least surprise.
+func outputString(m map[string]any, key string) string {
+	if v, ok := m[key].(string); ok {
+		return v
+	}
+	return ""
 }

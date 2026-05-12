@@ -30,8 +30,35 @@ exit ${FAKE_EXIT:-0}
 	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
 }
 
+// stubSSHOnPATH writes a fake `ssh` that drains stdin (the script body) and
+// behaves according to FAKE_SSH_OUT and FAKE_SSH_EXIT. Same PATH prepend
+// pattern as stubKubectlOnPATH.
+func stubSSHOnPATH(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Skip("validator tests use a /bin/sh stub; not portable to Windows")
+	}
+	dir := t.TempDir()
+	script := `#!/bin/sh
+# drain the piped-in script so the caller doesn't block on a write
+cat >/dev/null
+if [ -n "$FAKE_SSH_OUT" ]; then printf '%s' "$FAKE_SSH_OUT"; fi
+exit ${FAKE_SSH_EXIT:-0}
+`
+	path := filepath.Join(dir, "ssh")
+	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
+		t.Fatalf("write fake ssh: %v", err)
+	}
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+}
+
 func ptrString(s string) *string { return &s }
 func ptrInt(i int) *int          { return &i }
+
+func kubeAccess(b []byte) Access { return Access{Kubeconfig: b} }
+func sshAccess() Access {
+	return Access{SSHKeyPath: "/dev/null", SSHUser: "ubuntu", SSHHost: "1.2.3.4"}
+}
 
 func TestRun_ExpectEqualsPasses(t *testing.T) {
 	stubKubectlOnPATH(t)
@@ -44,7 +71,7 @@ func TestRun_ExpectEqualsPasses(t *testing.T) {
 			{Kind: "kubectl", Args: []string{"get", "pod"}, ExpectEquals: ptrString("Running")},
 		},
 	}
-	results, err := Run(context.Background(), task, []byte("dummy-kubeconfig"))
+	results, err := Run(context.Background(), task, kubeAccess([]byte("dummy-kubeconfig")))
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -63,7 +90,7 @@ func TestRun_ExpectEqualsFailsOnMismatch(t *testing.T) {
 			{Kind: "kubectl", ExpectEquals: ptrString("Running")},
 		},
 	}
-	results, err := Run(context.Background(), task, []byte("k"))
+	results, err := Run(context.Background(), task, kubeAccess([]byte("k")))
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -82,7 +109,7 @@ func TestRun_ExpectContainsPasses(t *testing.T) {
 			{Kind: "kubectl", ExpectContains: ptrString("Running")},
 		},
 	}
-	results, _ := Run(context.Background(), task, []byte("k"))
+	results, _ := Run(context.Background(), task, kubeAccess([]byte("k")))
 	if !results[0].Passed {
 		t.Errorf("expect_contains should match: %+v", results)
 	}
@@ -98,7 +125,7 @@ func TestRun_ExpectExitCodeMatch(t *testing.T) {
 			{Kind: "kubectl", ExpectExitCode: ptrInt(1)},
 		},
 	}
-	results, _ := Run(context.Background(), task, []byte("k"))
+	results, _ := Run(context.Background(), task, kubeAccess([]byte("k")))
 	if !results[0].Passed {
 		t.Errorf("expect_exit_code=1 should pass when kubectl exits 1: %+v", results)
 	}
@@ -113,7 +140,7 @@ func TestRun_ExpectExitCodeMismatch(t *testing.T) {
 			{Kind: "kubectl", ExpectExitCode: ptrInt(0)},
 		},
 	}
-	results, _ := Run(context.Background(), task, []byte("k"))
+	results, _ := Run(context.Background(), task, kubeAccess([]byte("k")))
 	if results[0].Passed {
 		t.Error("expected failure on exit-code mismatch")
 	}
@@ -129,7 +156,7 @@ func TestRun_KubectlFailureWithoutExpectExitCode(t *testing.T) {
 			{Kind: "kubectl", ExpectEquals: ptrString("anything")},
 		},
 	}
-	results, _ := Run(context.Background(), task, []byte("k"))
+	results, _ := Run(context.Background(), task, kubeAccess([]byte("k")))
 	if results[0].Passed {
 		t.Error("non-zero exit without expect_exit_code should fail")
 	}
@@ -139,10 +166,10 @@ func TestRun_UnknownValidationKind(t *testing.T) {
 	stubKubectlOnPATH(t)
 	task := catalog.Task{
 		Validations: []catalog.Validation{
-			{Kind: "shell", Script: "echo hi"},
+			{Kind: "http", URL: "http://example.com"},
 		},
 	}
-	results, err := Run(context.Background(), task, []byte("k"))
+	results, err := Run(context.Background(), task, kubeAccess([]byte("k")))
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -152,9 +179,6 @@ func TestRun_UnknownValidationKind(t *testing.T) {
 }
 
 func TestRun_RunsAllValidationsEvenAfterFailure(t *testing.T) {
-	// Each validation invokes kubectl with the same env, so they share
-	// behaviour. The point of this test is that .Run keeps going past a
-	// failure and reports per-index results.
 	stubKubectlOnPATH(t)
 	t.Setenv("FAKE_OUT", "wrong")
 	t.Setenv("FAKE_EXIT", "0")
@@ -163,10 +187,10 @@ func TestRun_RunsAllValidationsEvenAfterFailure(t *testing.T) {
 		Validations: []catalog.Validation{
 			{Kind: "kubectl", ExpectEquals: ptrString("right")},
 			{Kind: "kubectl", ExpectContains: ptrString("wrong")},
-			{Kind: "shell", Script: "noop"},
+			{Kind: "http", URL: "http://example.com"},
 		},
 	}
-	results, _ := Run(context.Background(), task, []byte("k"))
+	results, _ := Run(context.Background(), task, kubeAccess([]byte("k")))
 	if len(results) != 3 {
 		t.Fatalf("results len = %d, want 3", len(results))
 	}
@@ -177,17 +201,142 @@ func TestRun_RunsAllValidationsEvenAfterFailure(t *testing.T) {
 		t.Error("[1] should pass")
 	}
 	if results[2].Passed {
-		t.Error("[2] (shell, unimplemented) should fail")
+		t.Error("[2] (http, unimplemented) should fail")
 	}
 }
 
-func TestRun_EmptyKubeconfigErrors(t *testing.T) {
+func TestRun_KubectlTaskWithoutKubeconfigErrors(t *testing.T) {
 	task := catalog.Task{
 		Validations: []catalog.Validation{
 			{Kind: "kubectl", ExpectEquals: ptrString("x")},
 		},
 	}
-	if _, err := Run(context.Background(), task, nil); err == nil {
-		t.Error("expected error on empty kubeconfig")
+	if _, err := Run(context.Background(), task, Access{}); err == nil {
+		t.Error("expected error when a kubectl task has no kubeconfig")
+	}
+}
+
+func TestRun_ShellTaskWithoutKubeconfigStillRuns(t *testing.T) {
+	// A task that only has shell validations should not require a kubeconfig.
+	stubSSHOnPATH(t)
+	t.Setenv("FAKE_SSH_EXIT", "0")
+	t.Setenv("FAKE_SSH_OUT", "ok")
+
+	task := catalog.Task{
+		Validations: []catalog.Validation{
+			{Kind: "shell", Script: "echo ok"},
+		},
+	}
+	results, err := Run(context.Background(), task, sshAccess())
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if !results[0].Passed {
+		t.Errorf("shell-only task should pass without a kubeconfig: %+v", results)
+	}
+}
+
+// --- shell validation kind ---
+
+func TestRun_Shell_DefaultExitCodeZeroPasses(t *testing.T) {
+	stubSSHOnPATH(t)
+	t.Setenv("FAKE_SSH_EXIT", "0")
+
+	task := catalog.Task{
+		Validations: []catalog.Validation{
+			{Kind: "shell", Script: "/bin/true"},
+		},
+	}
+	results, _ := Run(context.Background(), task, sshAccess())
+	if !results[0].Passed {
+		t.Errorf("default-exit-0 should pass: %+v", results)
+	}
+}
+
+func TestRun_Shell_DefaultExitNonZeroFails(t *testing.T) {
+	stubSSHOnPATH(t)
+	t.Setenv("FAKE_SSH_EXIT", "1")
+
+	task := catalog.Task{
+		Validations: []catalog.Validation{
+			{Kind: "shell", Script: "/bin/false"},
+		},
+	}
+	results, _ := Run(context.Background(), task, sshAccess())
+	if results[0].Passed {
+		t.Error("non-zero exit should fail without expect_exit_code override")
+	}
+}
+
+func TestRun_Shell_ExpectExitCodeMatch(t *testing.T) {
+	stubSSHOnPATH(t)
+	t.Setenv("FAKE_SSH_EXIT", "2")
+
+	task := catalog.Task{
+		Validations: []catalog.Validation{
+			{Kind: "shell", Script: "exit 2", ExpectExitCode: ptrInt(2)},
+		},
+	}
+	results, _ := Run(context.Background(), task, sshAccess())
+	if !results[0].Passed {
+		t.Errorf("expect_exit_code=2 should pass: %+v", results)
+	}
+}
+
+func TestRun_Shell_ExpectEqualsTrimsAndMatches(t *testing.T) {
+	stubSSHOnPATH(t)
+	t.Setenv("FAKE_SSH_EXIT", "0")
+	t.Setenv("FAKE_SSH_OUT", "  Running\n")
+
+	task := catalog.Task{
+		Validations: []catalog.Validation{
+			{Kind: "shell", Script: "echo Running", ExpectEquals: ptrString("Running")},
+		},
+	}
+	results, _ := Run(context.Background(), task, sshAccess())
+	if !results[0].Passed {
+		t.Errorf("trimmed expect_equals should pass: %+v", results)
+	}
+}
+
+func TestRun_Shell_ExpectContains(t *testing.T) {
+	stubSSHOnPATH(t)
+	t.Setenv("FAKE_SSH_EXIT", "0")
+	t.Setenv("FAKE_SSH_OUT", "ubuntu 24.04.1 LTS")
+
+	task := catalog.Task{
+		Validations: []catalog.Validation{
+			{Kind: "shell", Script: "lsb_release -d", ExpectContains: ptrString("24.04")},
+		},
+	}
+	results, _ := Run(context.Background(), task, sshAccess())
+	if !results[0].Passed {
+		t.Errorf("expect_contains should match substring: %+v", results)
+	}
+}
+
+func TestRun_Shell_EmptyScriptFails(t *testing.T) {
+	stubSSHOnPATH(t)
+	task := catalog.Task{
+		Validations: []catalog.Validation{
+			{Kind: "shell", Script: ""},
+		},
+	}
+	results, _ := Run(context.Background(), task, sshAccess())
+	if results[0].Passed {
+		t.Error("empty script should fail validation")
+	}
+}
+
+func TestRun_Shell_MissingAccessFails(t *testing.T) {
+	stubSSHOnPATH(t)
+	task := catalog.Task{
+		Validations: []catalog.Validation{
+			{Kind: "shell", Script: "echo ok"},
+		},
+	}
+	results, _ := Run(context.Background(), task, Access{})
+	if results[0].Passed {
+		t.Error("missing SSH access should fail shell validation, not error")
 	}
 }
