@@ -91,11 +91,11 @@ domains:
 infrastructure:
   ttl_minutes: <span class="n">120</span>
   providers:
-    aws:
-      module: <span class="s">./aws</span>
-      inputs: { region: <span class="s">eu-west-1</span>, instance_type: <span class="s">t3.small</span> }
-    digitalocean:        <span class="c"># planned</span>
-    byo-hosts:           <span class="c"># planned</span>
+    aws:           { module: <span class="s">./aws</span>,           inputs: { region: <span class="s">eu-west-1</span>,    instance_type: <span class="s">t3.small</span> } }
+    digitalocean:  { module: <span class="s">./digitalocean</span>,  inputs: { region: <span class="s">ams3</span>,         droplet_size: <span class="s">s-1vcpu-2gb</span> } }
+    gcp:           { module: <span class="s">./gcp</span>,           inputs: { region: <span class="s">europe-west1</span>, machine_type: <span class="s">e2-small</span> } }
+    azure:         { module: <span class="s">./azure</span>,         inputs: { location: <span class="s">westeurope</span>, vm_size: <span class="s">Standard_B2s</span> } }
+    byo-hosts:     { setup_script: <span class="s">./byo-hosts/setup.sh</span>, roles: [{ name: <span class="s">node</span>, count: <span class="n">1</span> }] }
 
 tasks:
   - id: <span class="s">create-pod</span>
@@ -114,13 +114,16 @@ tasks:
         <h2>Status</h2>
         <table class="status">
           <tbody>
-            <tr><td>Manifest schema (multi-provider)</td><td class="ok">shipped</td></tr>
+            <tr><td>Manifest schema (multi-provider) + JSON Schema</td><td class="ok">shipped</td></tr>
             <tr><td>HTTP control plane (catalog, sessions, validation)</td><td class="ok">shipped</td></tr>
-            <tr><td>Web UI (catalog, exam detail, session monitor)</td><td class="ok">shipped</td></tr>
+            <tr><td>Web UI (catalog, exam detail, session monitor, per-task validate)</td><td class="ok">shipped</td></tr>
             <tr><td>AWS provider adapter</td><td class="ok">shipped</td></tr>
+            <tr><td>DigitalOcean provider adapter</td><td class="ok">shipped</td></tr>
+            <tr><td>GCP provider adapter</td><td class="ok">shipped</td></tr>
+            <tr><td>Azure provider adapter</td><td class="ok">shipped</td></tr>
+            <tr><td>BYO-hosts adapter (SSH-driven)</td><td class="ok">shipped</td></tr>
+            <tr><td>Validator kinds: kubectl, shell, http</td><td class="ok">shipped</td></tr>
             <tr><td>Warm-up exam (single task)</td><td class="ok">shipped</td></tr>
-            <tr><td>BYO-hosts adapter (SSH-driven)</td><td class="todo">planned</td></tr>
-            <tr><td>DigitalOcean / GCP / Azure adapters</td><td class="todo">planned</td></tr>
             <tr><td>Multi-node Terraform modules</td><td class="todo">planned</td></tr>
             <tr><td>Full CKA / CKAD / CKS / RHCSA content</td><td class="todo">planned</td></tr>
             <tr><td>Time-limit timer + weighted scoring UI</td><td class="todo">planned</td></tr>

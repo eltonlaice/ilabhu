@@ -10,10 +10,10 @@ exams/cka/warmup/
 │   ├── main.tf
 │   ├── variables.tf
 │   └── outputs.tf
-├── digitalocean/      # (planned) Terraform module — DigitalOcean provider
-├── gcp/               # (planned)
-├── azure/             # (planned)
-└── byo-hosts/         # (planned) setup.sh + teardown.sh + (optional) inventory
+├── digitalocean/      # Terraform module — DigitalOcean provider
+├── gcp/               # Terraform module — Google Cloud provider
+├── azure/             # Terraform module — Azure provider
+└── byo-hosts/         # setup.sh + teardown.sh, run over SSH on user-provided hosts
 ```
 
 Each exam declares one or more **providers**. The user picks one when starting a session; each provider has its own module (Terraform-driven cloud) or its own setup/teardown scripts (BYO-hosts).

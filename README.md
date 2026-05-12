@@ -30,7 +30,7 @@ Preparing for certifications like the CKA or RHCSA needs realistic environments 
 
 ## Status
 
-Pre-alpha. Pipeline is wired (catalog, provisioning, validation) but only the AWS adapter and a single warm-up exam are shipped. See the roadmap below.
+Pre-alpha. The full pipeline (catalog, provisioning, validation) and all five declared providers (AWS, DigitalOcean, GCP, Azure, BYO-hosts) are wired up. A single warm-up CKA exam ships with Terraform modules for the four cloud providers and an SSH setup script for BYO-hosts. Real CKA content (~17 tasks) is the next milestone. See the roadmap below.
 
 ## How it works
 
@@ -60,20 +60,24 @@ For the IAM role + external-id setup, see [docs/byo-cloud-setup.md](docs/byo-clo
 
 ## Roadmap
 
-- [x] Exam manifest schema (`exam.yaml`) v1, multi-provider
-- [x] First exam: CKA — warmup (single task, AWS)
-- [x] Control plane: AWS assume-role + terraform apply/destroy
+- [x] Exam manifest schema (`exam.yaml`) v1, multi-provider, with a JSON Schema for editor autocomplete
+- [x] First exam: CKA — warmup (single task)
+- [x] Control plane: catalog, sessions, validations; coverage gate at 45%
 - [x] Web UI: exam catalog, exam detail, session monitor with kubeconfig download, per-task Validate
-- [x] Validator: kubectl checks
-- [ ] BYO-hosts adapter (SSH-driven setup/teardown)
-- [ ] DigitalOcean adapter
-- [ ] GCP and Azure adapters
-- [ ] Multi-node Terraform modules
+- [x] Validator kinds: `kubectl`, `shell` (SSH-piped), `http` (with `{{public_ip}}` substitution)
+- [x] **AWS** adapter (`sts:AssumeRole` + external id)
+- [x] **DigitalOcean** adapter (PAT)
+- [x] **GCP** adapter (Service Account key; project id extracted from JSON)
+- [x] **Azure** adapter (Service Principal with client secret)
+- [x] **BYO-hosts** adapter (SSH key + host list; setup/teardown scripts)
+- [x] Authoring docs (`docs/authoring-an-exam.md`, `docs/exam-schema.md`, `docs/exam-schema.json`)
+- [x] Troubleshooting guide
+- [ ] Multi-node Terraform modules (currently single-node k3s on every cloud)
 - [ ] Full CKA content (~17 tasks across all domains)
 - [ ] CKAD, CKS, RHCSA exam packs
 - [ ] Time-limit timer + weighted scoring UI
-- [ ] `docker compose` self-host
-- [ ] Authoring docs
+- [ ] `docker compose` self-host bundle
+- [ ] Workload Identity Federation for GCP / Azure (currently SA key / SP secret)
 
 ## License
 

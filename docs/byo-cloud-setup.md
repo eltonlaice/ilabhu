@@ -4,7 +4,7 @@ ilabhu provisions every exam in your own cloud account. The control plane never 
 
 This guide walks you through the one-time setup for each supported provider.
 
-> AWS and DigitalOcean adapters are shipped. GCP, Azure and BYO-hosts are on the roadmap.
+> All five adapters ship today: AWS, DigitalOcean, GCP, Azure, and BYO-hosts. This guide covers AWS and DigitalOcean in depth; GCP, Azure and BYO-hosts are summarised at the end with links to the upstream docs you'll need.
 
 ---
 
@@ -247,6 +247,58 @@ aws iam delete-role --role-name ilabhu-lab-runner
 
 Make sure no sessions are in flight first — without the role, ilabhu cannot run `terraform destroy` and you'll have to clean up resources manually.
 
+## GCP (Service Account key)
+
+The GCP adapter authenticates with a Service Account key in JSON form. The key carries its own `project_id`, which ilabhu parses out and feeds to Terraform as `TF_VAR_project` so the exam manifest does not need to encode your account.
+
+1. Create the project (or pick an existing one) — https://console.cloud.google.com/projectcreate.
+2. Enable the **Compute Engine API** and the **Cloud Resource Manager API** on that project.
+3. Create a Service Account — https://console.cloud.google.com/iam-admin/serviceaccounts.
+4. Grant it `Compute Admin` (`roles/compute.admin`) and `Service Account User` (`roles/iam.serviceAccountUser`) at the project level — enough to manage Compute Engine and the default SA the warmup VM uses.
+5. From the Service Account's **Keys** tab, **Add key → Create new key → JSON**. Download the key file.
+6. Paste the file's full contents into the **GCP service account key** textarea on the Start-session form. ilabhu validates the JSON, extracts `project_id`, and exports `GOOGLE_CREDENTIALS` + `TF_VAR_project` for Terraform.
+
+> Workload Identity Federation is a better fit for production deployments that can issue OIDC tokens; ilabhu's SA-key path is what every self-hoster can run today.
+
+## Azure (Service Principal with client secret)
+
+The Azure adapter authenticates with a Service Principal (SP). The user provides four pieces — tenant id, subscription id, client id, client secret — which ilabhu exports as `ARM_*` environment variables for the azurerm Terraform provider.
+
+1. Pick the subscription you want the labs to live in:
+   ```sh
+   az account list --output table
+   export ILABHU_SUB=<subscription-id>
+   az account set --subscription "$ILABHU_SUB"
+   ```
+2. Create the Service Principal scoped to that subscription with a `Contributor` role:
+   ```sh
+   az ad sp create-for-rbac \
+     --name ilabhu-lab-runner \
+     --role Contributor \
+     --scopes "/subscriptions/$ILABHU_SUB" \
+     --years 1
+   ```
+   The output contains `appId`, `password`, and `tenant` — those are the **client id**, **client secret**, and **tenant id**.
+3. Paste the four values into the **Azure Service Principal** fields on the Start-session form.
+
+> The default warmup exam uses `Standard_B2s` in `westeurope`; both are available in every paying subscription.
+
+## BYO-hosts (your own Linux servers)
+
+The BYO-hosts adapter is the only option that costs nothing per session — you run the exam on hardware you already operate (a Hetzner droplet, a homelab Linux box, a corporate VM). The control plane SSHes into each host you supply, runs the exam's `setup.sh` under `sudo -E`, then fetches the kubeconfig.
+
+1. Make sure each host meets the exam's declared `min_specs` (the warmup wants 2 CPU / 2 GB RAM and Ubuntu 22.04+, Rocky 9+, or Debian 12+).
+2. Make sure your SSH user has passwordless `sudo` for the lifetime of the session — the setup script needs root to install k3s. Re-lock when you destroy.
+3. Have the SSH **private key** ready (the contents of the `~/.ssh/id_*` PEM file, including the `-----BEGIN`/`END PRIVATE KEY-----` markers).
+4. On the Start-session form, pick **Your Linux hosts**, paste the private key, then add one row per host with:
+   - **role** — must match a `roles[].name` declared in the exam (the warmup expects `node`).
+   - **address** — IPv4 or hostname.
+   - **ssh_user** — the user the key authorises.
+
+ilabhu rejects roles the exam does not declare, host counts below the declared minimum, and any host address / ssh_user that contains characters outside `[a-zA-Z0-9._-]` (the regex you need to satisfy to get anywhere near `exec.CommandContext`).
+
+`teardown.sh` is best-effort: it uninstalls k3s and removes the kubeconfig but does not touch anything else on the box.
+
 ## Troubleshooting
 
 | Symptom | Likely cause |
@@ -255,3 +307,8 @@ Make sure no sessions are in flight first — without the role, ilabhu cannot ru
 | `AccessDenied: ... external id` | Mismatch between the external id sent by ilabhu and the one in the trust policy. |
 | `UnauthorizedOperation` during `terraform apply` | Permissions policy is missing an action the lab module needs. Check CloudTrail for the exact action. |
 | `Could not locate AMI` | The exam module is region-pinned. Confirm `infrastructure.providers.aws.inputs.region` in the exam's `exam.yaml` is enabled in your account. |
+| `service account key is missing project_id` | The pasted GCP key is malformed or you uploaded a user-account key. Re-download from the Service Account's **Keys** tab. |
+| `azure.tenant_id is required` (or similar per-field) | The Service Principal block is incomplete. `az ad sp create-for-rbac` prints all four fields you need. |
+| `host X has role "Y" but the exam declares no such role` | The role you set on a BYO-host doesn't match the exam's `roles[].name`. Look at the exam's `byo-hosts:` block. |
+| `role "node" needs 1 host(s); got 0` | You picked BYO-hosts but didn't add a host with the required role. |
+| `invalid ssh target "u@h with space"` | Your ssh_user or address contains characters outside `[a-zA-Z0-9._-]`. |
