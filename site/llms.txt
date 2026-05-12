@@ -1,0 +1,58 @@
+# ilabhu
+
+> Open-source, self-hostable certification exam simulator (CKA, CKAD, CKS, RHCSA, ...). Provisions full exam environments — multi-domain, time-bounded, scored — in the user's own AWS / GCP / Azure / DigitalOcean account, or on Linux servers the user already operates.
+
+ilabhu is licensed Apache 2.0 and distributed as source under [github.com/eltonlaice/ilabhu](https://github.com/eltonlaice/ilabhu). It is **not** a SaaS product — every operator runs their own control plane and pays their own infrastructure (or pays nothing, with the BYO-hosts adapter).
+
+## How it works
+
+An exam is a versioned directory under `exams/` containing:
+
+- `exam.yaml` — manifest with weighted domains, ~15–20 tasks, declared infrastructure providers, time limit, passing score.
+- One Terraform module per supported cloud provider (or a `setup.sh` / `teardown.sh` pair for the BYO-hosts adapter).
+
+When a user starts a session, the control plane (`ilabhud`, written in Go) picks the chosen provider's adapter, provisions the environment in the user's account or hosts, fetches the kubeconfig, and exposes per-task `validate` endpoints that drive `kubectl` / `shell` / `http` checks.
+
+## Providers (all shipped)
+
+| Provider | Auth | Cost per 2h session |
+|---|---|---|
+| AWS | `sts:AssumeRole` + external id | ~$0.05 |
+| DigitalOcean | Personal Access Token | ~$0.04 |
+| GCP | Service Account key JSON | ~$0.04 |
+| Azure | Service Principal + client secret | ~$0.08 |
+| BYO-hosts | SSH private key + host list | $0 |
+
+## Validator kinds
+
+- `kubectl` — runs `kubectl` against the session's kubeconfig; matches stdout via `expect_equals` / `expect_contains` / `expect_exit_code`.
+- `shell` — pipes a script over SSH to `/bin/sh` on the access host; same expectation matchers as `kubectl`.
+- `http` — `GET` against a URL; supports `{{public_ip}}` substitution; checks `expect_status` / `expect_body_contains`.
+
+## Repository structure
+
+- `control-plane/` — Go daemon `ilabhud`; HTTP API at `/v1/exams`, `/v1/sessions`, `/v1/sessions/{id}/tasks/{task_id}/validate`.
+- `web/` — Next.js 16 (App Router) frontend.
+- `exams/<exam-code>/<slug>/` — exam manifests + provider modules.
+- `docs/` — `architecture.md`, `exam-schema.md` (+ JSON Schema), `authoring-an-exam.md`, `byo-cloud-setup.md`, `troubleshooting.md`.
+- `site/` — this landing page, deployed to https://ilabhu.com/ via GitHub Pages.
+
+## Key documents
+
+- [README](https://github.com/eltonlaice/ilabhu/blob/main/README.md)
+- [Architecture](https://github.com/eltonlaice/ilabhu/blob/main/docs/architecture.md)
+- [Manifest schema](https://github.com/eltonlaice/ilabhu/blob/main/docs/exam-schema.md) — [JSON Schema](https://github.com/eltonlaice/ilabhu/blob/main/docs/exam-schema.json)
+- [BYO-cloud setup](https://github.com/eltonlaice/ilabhu/blob/main/docs/byo-cloud-setup.md) — per-provider walkthroughs
+- [Authoring an exam](https://github.com/eltonlaice/ilabhu/blob/main/docs/authoring-an-exam.md)
+- [Troubleshooting](https://github.com/eltonlaice/ilabhu/blob/main/docs/troubleshooting.md)
+
+## What ilabhu is not
+
+- Not a shared sandbox. Every session lives in resources the user owns.
+- Not a chat tutor. There is no LLM that grades free-form answers; validations are deterministic shell / kubectl / http checks.
+- Not a SaaS. There is no `https://app.ilabhu.com`. The landing page is a brochure; the product is the daemon you self-host.
+- Not a CKA cram course. ilabhu provides the environment and the grading; you bring the study.
+
+## Maintainer
+
+[Elton Laice](https://github.com/eltonlaice), based in Maputo, Mozambique. Issues and pull requests welcome under the Apache 2.0 license.

@@ -202,7 +202,34 @@ pre .n { color: var(--code-number); }
 }
 
 /* Final */
-.final-cta { padding-bottom: 4rem; }
+.final-cta { padding-bottom: 2rem; }
+
+/* FAQ */
+.faq { padding-bottom: 4rem; }
+.faq article {
+  padding: 1.25rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.faq article:last-child { border-bottom: none; }
+.faq h3 {
+  font-size: 1rem;
+  margin: 0 0 0.5rem;
+  letter-spacing: -0.005em;
+}
+.faq p {
+  margin: 0;
+  color: var(--muted);
+}
+.faq p a { color: var(--accent); }
+.faq code {
+  background: var(--line);
+  padding: 0.1em 0.35em;
+  border-radius: 3px;
+  font-size: 0.85em;
+}
+@media (prefers-color-scheme: dark) {
+  .faq code { background: rgba(255,255,255,0.06); }
+}
 
 footer {
   border-top: 1px solid var(--line);
