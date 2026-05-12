@@ -228,6 +228,33 @@ func TestCreateSession_Success(t *testing.T) {
 	}
 }
 
+func TestCreateSession_SuccessDigitalOcean(t *testing.T) {
+	mgr := &fakeManager{
+		startFn: func(_ context.Context, examID string, in session.StartInput) (*session.Session, error) {
+			if examID != "cka/example" || in.Provider != "digitalocean" || in.DigitalOcean == nil || in.DigitalOcean.Token != "dop_v1_xyz" {
+				t.Errorf("unexpected args: %q %+v", examID, in)
+			}
+			return &session.Session{
+				ID:        "sess-do-1",
+				ExamID:    examID,
+				Provider:  in.Provider,
+				Status:    session.StatusProvisioning,
+				CreatedAt: time.Now().UTC(),
+				UpdatedAt: time.Now().UTC(),
+			}, nil
+		},
+	}
+	srv := newTestServer(t, emptyCatalog(t), mgr)
+
+	body := strings.NewReader(`{"exam_id":"cka/example","provider":"digitalocean","digitalocean":{"token":"dop_v1_xyz"}}`)
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/v1/sessions", body))
+
+	if rr.Code != http.StatusAccepted {
+		t.Fatalf("status = %d, want 202; body=%s", rr.Code, rr.Body.String())
+	}
+}
+
 func TestCreateSession_RejectsMissingExamID(t *testing.T) {
 	srv := newTestServer(t, emptyCatalog(t), &fakeManager{})
 

@@ -13,6 +13,7 @@ import (
 
 	"github.com/eltonlaice/ilabhu/control-plane/internal/catalog"
 	awscloud "github.com/eltonlaice/ilabhu/control-plane/internal/cloud/aws"
+	docloud "github.com/eltonlaice/ilabhu/control-plane/internal/cloud/digitalocean"
 	"github.com/eltonlaice/ilabhu/control-plane/internal/provisioner"
 )
 
@@ -22,8 +23,9 @@ import (
 type StartInput struct {
 	Provider string // aws | gcp | azure | digitalocean | byo-hosts
 
-	AWS *AWSCredentials
-	// GCP, Azure, DigitalOcean, BYOHosts to be added in follow-up PRs.
+	AWS          *AWSCredentials
+	DigitalOcean *DOCredentials
+	// GCP, Azure, BYOHosts to be added in follow-up PRs.
 }
 
 // AWSCredentials carries the role ARN + external id pair the control plane
@@ -31,6 +33,13 @@ type StartInput struct {
 type AWSCredentials struct {
 	RoleARN    string
 	ExternalID string
+}
+
+// DOCredentials carries a DigitalOcean Personal Access Token. Unlike AWS, DO
+// has no AssumeRole equivalent — the token is used directly and held only in
+// memory for the duration of each Terraform apply/destroy.
+type DOCredentials struct {
+	Token string
 }
 
 // Manager owns the lifecycle of sessions: it talks to the catalog, provisions
@@ -57,20 +66,52 @@ func (m *Manager) Start(ctx context.Context, examID string, input StartInput) (*
 	if !ok {
 		return nil, fmt.Errorf("exam %q does not declare provider %q", examID, input.Provider)
 	}
-	switch input.Provider {
-	case "aws":
-		if input.AWS == nil || input.AWS.RoleARN == "" {
-			return nil, errors.New("aws.role_arn is required")
-		}
-	default:
-		return nil, fmt.Errorf("provider %q not implemented yet", input.Provider)
+	if err := validateProviderInput(input); err != nil {
+		return nil, err
 	}
-	_ = spec // used inside provision
 
 	sess := m.Store.Create(examID)
 	_ = m.Store.Update(sess.ID, func(s *Session) { s.Provider = input.Provider })
 	go m.provision(context.Background(), sess, exam, spec, input)
 	return sess, nil
+}
+
+// validateProviderInput rejects missing or mismatched provider credentials
+// before any cloud call happens.
+func validateProviderInput(input StartInput) error {
+	switch input.Provider {
+	case "aws":
+		if input.AWS == nil || input.AWS.RoleARN == "" {
+			return errors.New("aws.role_arn is required")
+		}
+	case "digitalocean":
+		if input.DigitalOcean == nil || input.DigitalOcean.Token == "" {
+			return errors.New("digitalocean.token is required")
+		}
+	default:
+		return fmt.Errorf("provider %q not implemented yet", input.Provider)
+	}
+	return nil
+}
+
+// resolveEnv builds the Terraform-compatible environment variables for the
+// requested provider. For AWS it makes an `sts:AssumeRole` call (with the
+// supplied session-name) to mint short-lived credentials; for DigitalOcean it
+// just shapes the user-supplied token. The returned env is empty for
+// unimplemented providers (validateProviderInput catches that earlier).
+func (m *Manager) resolveEnv(ctx context.Context, input StartInput, sessionName string) ([]string, error) {
+	switch input.Provider {
+	case "aws":
+		creds, err := awscloud.AssumeRole(ctx, input.AWS.RoleARN, input.AWS.ExternalID, sessionName, time.Hour)
+		if err != nil {
+			return nil, fmt.Errorf("assume role: %w", err)
+		}
+		return creds.AsEnv(), nil
+	case "digitalocean":
+		return docloud.Credentials{Token: input.DigitalOcean.Token}.AsEnv(), nil
+	default:
+		return nil, fmt.Errorf("provider %q not implemented yet", input.Provider)
+	}
 }
 
 func (m *Manager) provision(ctx context.Context, sess *Session, exam *catalog.Manifest, spec catalog.ProviderSpec, input StartInput) {
@@ -95,9 +136,9 @@ func (m *Manager) provision(ctx context.Context, sess *Session, exam *catalog.Ma
 		return
 	}
 
-	awsCreds, err := awscloud.AssumeRole(ctx, input.AWS.RoleARN, input.AWS.ExternalID, "ilabhu-"+sess.ID, time.Hour)
+	env, err := m.resolveEnv(ctx, input, "ilabhu-"+sess.ID)
 	if err != nil {
-		m.fail(sess, fmt.Errorf("assume role: %w", err))
+		m.fail(sess, err)
 		return
 	}
 
@@ -115,11 +156,11 @@ func (m *Manager) provision(ctx context.Context, sess *Session, exam *catalog.Ma
 		s.SSHPrivateKeyPath = keyPath
 	})
 
-	if err := m.TF.Apply(ctx, moduleDst, vars, awsCreds.AsEnv()); err != nil {
+	if err := m.TF.Apply(ctx, moduleDst, vars, env); err != nil {
 		m.fail(sess, fmt.Errorf("terraform apply: %w", err))
 		return
 	}
-	outs, err := m.TF.Outputs(ctx, moduleDst, awsCreds.AsEnv())
+	outs, err := m.TF.Outputs(ctx, moduleDst, env)
 	if err != nil {
 		m.fail(sess, fmt.Errorf("read outputs: %w", err))
 		return
@@ -166,26 +207,22 @@ func (m *Manager) Destroy(ctx context.Context, sessID string, input StartInput) 
 	if input.Provider != sess.Provider {
 		return fmt.Errorf("provider mismatch: session was started with %q, got %q", sess.Provider, input.Provider)
 	}
-	switch input.Provider {
-	case "aws":
-		if input.AWS == nil || input.AWS.RoleARN == "" {
-			return errors.New("aws.role_arn is required")
-		}
-		awsCreds, err := awscloud.AssumeRole(ctx, input.AWS.RoleARN, input.AWS.ExternalID, "ilabhu-destroy-"+sess.ID, time.Hour)
-		if err != nil {
-			return fmt.Errorf("assume role: %w", err)
-		}
-		_ = m.Store.Update(sessID, func(s *Session) { s.Status = StatusDestroying })
-		moduleDst := filepath.Join(sess.Workdir, "module")
-		if err := m.TF.Destroy(ctx, moduleDst, awsCreds.AsEnv()); err != nil {
-			_ = m.Store.Update(sessID, func(s *Session) {
-				s.Status = StatusFailed
-				s.Error = err.Error()
-			})
-			return err
-		}
-	default:
-		return fmt.Errorf("provider %q not implemented yet", input.Provider)
+	if err := validateProviderInput(input); err != nil {
+		return err
+	}
+	env, err := m.resolveEnv(ctx, input, "ilabhu-destroy-"+sess.ID)
+	if err != nil {
+		return err
+	}
+
+	_ = m.Store.Update(sessID, func(s *Session) { s.Status = StatusDestroying })
+	moduleDst := filepath.Join(sess.Workdir, "module")
+	if err := m.TF.Destroy(ctx, moduleDst, env); err != nil {
+		_ = m.Store.Update(sessID, func(s *Session) {
+			s.Status = StatusFailed
+			s.Error = err.Error()
+		})
+		return err
 	}
 	_ = m.Store.Update(sessID, func(s *Session) { s.Status = StatusDestroyed })
 	return nil
@@ -220,9 +257,9 @@ func generateSSHKey(path string) (string, error) {
 	return strings.TrimSpace(string(pub)), nil
 }
 
-// fetchKubeconfig polls the lab VM via SSH until /home/ubuntu/kubeconfig
-// exists, then SCPs it down. The VM's user_data installs k3s and writes the
-// file once the API server is up.
+// fetchKubeconfig polls the exam VM via SSH until the configured kubeconfig
+// path exists, then SCPs it down. The VM's user_data is responsible for
+// installing k3s and writing the file once the API server is up.
 func fetchKubeconfig(ctx context.Context, keyPath, user, host, remotePath string) ([]byte, error) {
 	deadline := time.Now().Add(5 * time.Minute)
 	sshOpts := []string{

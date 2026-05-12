@@ -22,7 +22,12 @@ infrastructure:
       inputs:
         region: eu-west-1
         instance_type: t3.small
-    # digitalocean, gcp, azure, byo-hosts will be added in follow-up PRs.
+    digitalocean:
+      module: ./digitalocean
+      inputs:
+        region: ams3
+        droplet_size: s-1vcpu-2gb
+    # gcp, azure, byo-hosts will be added in follow-up PRs.
 
 access:
   kind: kubeconfig

@@ -10,19 +10,26 @@ import (
 	"github.com/eltonlaice/ilabhu/control-plane/internal/validator"
 )
 
-// awsCredsBody is the per-provider credentials block in the create/destroy
+// awsCredsBody is the AWS provider credentials block in the create/destroy
 // request body.
 type awsCredsBody struct {
 	RoleARN    string `json:"role_arn"`
 	ExternalID string `json:"external_id"`
 }
 
-// sessionRequest is the create- and destroy-session request body. New
-// providers add their own optional block alongside `aws`.
+// doCredsBody is the DigitalOcean provider credentials block.
+type doCredsBody struct {
+	Token string `json:"token"`
+}
+
+// sessionRequest is the create- and destroy-session request body. Each
+// supported provider has its own optional block; the active one is selected
+// by the `provider` discriminator.
 type sessionRequest struct {
-	ExamID   string        `json:"exam_id,omitempty"`
-	Provider string        `json:"provider"`
-	AWS      *awsCredsBody `json:"aws,omitempty"`
+	ExamID       string        `json:"exam_id,omitempty"`
+	Provider     string        `json:"provider"`
+	AWS          *awsCredsBody `json:"aws,omitempty"`
+	DigitalOcean *doCredsBody  `json:"digitalocean,omitempty"`
 }
 
 func (r *sessionRequest) toStartInput() session.StartInput {
@@ -31,6 +38,11 @@ func (r *sessionRequest) toStartInput() session.StartInput {
 		in.AWS = &session.AWSCredentials{
 			RoleARN:    r.AWS.RoleARN,
 			ExternalID: r.AWS.ExternalID,
+		}
+	}
+	if r.DigitalOcean != nil {
+		in.DigitalOcean = &session.DOCredentials{
+			Token: r.DigitalOcean.Token,
 		}
 	}
 	return in

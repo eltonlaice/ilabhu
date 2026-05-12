@@ -65,8 +65,9 @@ export type Session = {
 export type ProviderCredentials = {
   provider: Provider;
   aws?: { role_arn: string; external_id: string };
-  // gcp / azure / digitalocean / byo-hosts blocks will be added in
-  // follow-up PRs as those adapters land in the control plane.
+  digitalocean?: { token: string };
+  // gcp / azure / byo-hosts blocks will be added in follow-up PRs as those
+  // adapters land in the control plane.
 };
 
 function apiURL(path: string): string {
