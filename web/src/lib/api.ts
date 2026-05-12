@@ -62,6 +62,12 @@ export type Session = {
   error?: string;
 };
 
+export type BYOHost = {
+  role: string;
+  address: string;
+  ssh_user: string;
+};
+
 export type ProviderCredentials = {
   provider: Provider;
   aws?: { role_arn: string; external_id: string };
@@ -73,7 +79,7 @@ export type ProviderCredentials = {
     client_id: string;
     client_secret: string;
   };
-  // byo-hosts block will be added in a follow-up PR.
+  byo_hosts?: { ssh_private_key: string; hosts: BYOHost[] };
 };
 
 function apiURL(path: string): string {

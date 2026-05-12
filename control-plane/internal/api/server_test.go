@@ -312,6 +312,39 @@ func TestCreateSession_SuccessAzure(t *testing.T) {
 	}
 }
 
+func TestCreateSession_SuccessBYOHosts(t *testing.T) {
+	mgr := &fakeManager{
+		startFn: func(_ context.Context, examID string, in session.StartInput) (*session.Session, error) {
+			if examID != "cka/example" || in.Provider != "byo-hosts" || in.BYOHosts == nil {
+				t.Fatalf("unexpected args: %q %+v", examID, in)
+			}
+			if in.BYOHosts.SSHPrivateKey == "" || len(in.BYOHosts.Hosts) != 2 {
+				t.Errorf("byo-hosts block not fully forwarded: %+v", in.BYOHosts)
+			}
+			if in.BYOHosts.Hosts[0].Role != "node" || in.BYOHosts.Hosts[0].Address != "10.0.0.1" {
+				t.Errorf("host[0] wrong: %+v", in.BYOHosts.Hosts[0])
+			}
+			return &session.Session{
+				ID:        "sess-byo-1",
+				ExamID:    examID,
+				Provider:  in.Provider,
+				Status:    session.StatusProvisioning,
+				CreatedAt: time.Now().UTC(),
+				UpdatedAt: time.Now().UTC(),
+			}, nil
+		},
+	}
+	srv := newTestServer(t, emptyCatalog(t), mgr)
+
+	body := strings.NewReader(`{"exam_id":"cka/example","provider":"byo-hosts","byo_hosts":{"ssh_private_key":"-----BEGIN K-----\nabc\n-----END K-----","hosts":[{"role":"node","address":"10.0.0.1","ssh_user":"ubuntu"},{"role":"node","address":"10.0.0.2","ssh_user":"ubuntu"}]}}`)
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/v1/sessions", body))
+
+	if rr.Code != http.StatusAccepted {
+		t.Fatalf("status = %d, want 202; body=%s", rr.Code, rr.Body.String())
+	}
+}
+
 func TestCreateSession_RejectsMissingExamID(t *testing.T) {
 	srv := newTestServer(t, emptyCatalog(t), &fakeManager{})
 

@@ -29,7 +29,23 @@ type StartInput struct {
 	DigitalOcean *DOCredentials
 	GCP          *GCPCredentials
 	Azure        *AzureCredentials
-	// BYOHosts to be added in a follow-up PR.
+	BYOHosts     *BYOHostsCredentials
+}
+
+// BYOHostsCredentials is the payload for the byo-hosts adapter. The user
+// supplies one private key with access to every listed host. The key and
+// host details travel through StartInput, get materialised to per-session
+// files for the duration of the apply/teardown, and are removed afterwards.
+type BYOHostsCredentials struct {
+	SSHPrivateKey string
+	Hosts         []BYOHost
+}
+
+// BYOHost is one user-provided Linux server.
+type BYOHost struct {
+	Role    string // must match a role.name declared in the exam's provider spec
+	Address string // ip or hostname
+	SSHUser string
 }
 
 // AWSCredentials carries the role ARN + external id pair the control plane
@@ -127,6 +143,27 @@ func validateProviderInput(input StartInput) error {
 		if err := creds.Validate(); err != nil {
 			return err
 		}
+	case "byo-hosts":
+		if input.BYOHosts == nil {
+			return errors.New("byo-hosts credentials are required")
+		}
+		if input.BYOHosts.SSHPrivateKey == "" {
+			return errors.New("byo-hosts.ssh_private_key is required")
+		}
+		if len(input.BYOHosts.Hosts) == 0 {
+			return errors.New("byo-hosts.hosts must contain at least one host")
+		}
+		for i, h := range input.BYOHosts.Hosts {
+			if h.Address == "" {
+				return fmt.Errorf("byo-hosts.hosts[%d].address is required", i)
+			}
+			if h.SSHUser == "" {
+				return fmt.Errorf("byo-hosts.hosts[%d].ssh_user is required", i)
+			}
+			if err := validateHostInput(h); err != nil {
+				return fmt.Errorf("byo-hosts.hosts[%d]: %w", i, err)
+			}
+		}
 	default:
 		return fmt.Errorf("provider %q not implemented yet", input.Provider)
 	}
@@ -175,6 +212,16 @@ func (m *Manager) provision(ctx context.Context, sess *Session, exam *catalog.Ma
 		m.fail(sess, fmt.Errorf("mkdir workdir: %w", err))
 		return
 	}
+	_ = m.Store.Update(sess.ID, func(s *Session) { s.Workdir = workdir })
+
+	if input.Provider == "byo-hosts" {
+		m.provisionBYOHosts(ctx, log, sess, exam, spec, input)
+		return
+	}
+	m.provisionTerraform(ctx, log, sess, exam, spec, input, workdir)
+}
+
+func (m *Manager) provisionTerraform(ctx context.Context, log *slog.Logger, sess *Session, exam *catalog.Manifest, spec catalog.ProviderSpec, input StartInput, workdir string) {
 	moduleDst := filepath.Join(workdir, "module")
 	moduleSrc := filepath.Join(exam.Dir, spec.Module)
 	if err := provisioner.PrepareWorkdir(moduleSrc, moduleDst); err != nil {
@@ -205,7 +252,6 @@ func (m *Manager) provision(ctx context.Context, sess *Session, exam *catalog.Ma
 
 	log.Info("provisioning")
 	_ = m.Store.Update(sess.ID, func(s *Session) {
-		s.Workdir = workdir
 		s.SSHPrivateKeyPath = keyPath
 	})
 
@@ -248,6 +294,62 @@ func (m *Manager) provision(ctx context.Context, sess *Session, exam *catalog.Ma
 	log.Info("ready")
 }
 
+// provisionBYOHosts implements the byo-hosts flow: validate role counts,
+// materialise the user's SSH key, SCP+exec the exam's setup script on every
+// host, and fetch the kubeconfig from the access host.
+func (m *Manager) provisionBYOHosts(ctx context.Context, log *slog.Logger, sess *Session, exam *catalog.Manifest, spec catalog.ProviderSpec, input StartInput) {
+	if err := validateBYOHostsRoles(spec, input.BYOHosts.Hosts); err != nil {
+		m.fail(sess, err)
+		return
+	}
+	keyPath, err := writePrivateKey(sess.Workdir, input.BYOHosts.SSHPrivateKey)
+	if err != nil {
+		m.fail(sess, err)
+		return
+	}
+	_ = m.Store.Update(sess.ID, func(s *Session) { s.SSHPrivateKeyPath = keyPath })
+
+	scriptPath := filepath.Join(exam.Dir, spec.SetupScript)
+	if _, err := os.Stat(scriptPath); err != nil {
+		m.fail(sess, fmt.Errorf("setup_script %s: %w", scriptPath, err))
+		return
+	}
+
+	log.Info("running setup script on every host", "n", len(input.BYOHosts.Hosts))
+	if err := runScriptOnAllHosts(ctx, log, keyPath, scriptPath, input.BYOHosts.Hosts); err != nil {
+		m.fail(sess, fmt.Errorf("byo-hosts setup: %w", err))
+		return
+	}
+
+	if exam.Access.Kind == "kubeconfig" {
+		access := pickAccessHost(input.BYOHosts.Hosts)
+		// Convention: the setup script writes the kubeconfig at $HOME/kubeconfig
+		// on the access host. Resolve it through the SSH user's home dir.
+		kubeconfig, err := fetchKubeconfig(ctx, keyPath, access.SSHUser, access.Address, "/home/"+access.SSHUser+"/kubeconfig")
+		if err != nil {
+			// Fall back to /root/kubeconfig for `root` users.
+			if access.SSHUser == "root" {
+				kubeconfig, err = fetchKubeconfig(ctx, keyPath, access.SSHUser, access.Address, "/root/kubeconfig")
+			}
+		}
+		if err != nil {
+			m.fail(sess, fmt.Errorf("fetch kubeconfig from %s: %w", access.Address, err))
+			return
+		}
+		_ = m.Store.Update(sess.ID, func(s *Session) {
+			s.Kubeconfig = kubeconfig
+			s.Outputs = map[string]any{
+				"public_ip": access.Address,
+				"ssh_user":  access.SSHUser,
+				"hosts":     len(input.BYOHosts.Hosts),
+			}
+		})
+	}
+
+	_ = m.Store.Update(sess.ID, func(s *Session) { s.Status = StatusReady })
+	log.Info("ready")
+}
+
 // Destroy tears down a session synchronously.
 func (m *Manager) Destroy(ctx context.Context, sessID string, input StartInput) error {
 	sess, err := m.Store.Get(sessID)
@@ -263,12 +365,34 @@ func (m *Manager) Destroy(ctx context.Context, sessID string, input StartInput) 
 	if err := validateProviderInput(input); err != nil {
 		return err
 	}
+
+	_ = m.Store.Update(sessID, func(s *Session) { s.Status = StatusDestroying })
+
+	if input.Provider == "byo-hosts" {
+		exam, ok := m.Catalog.Get(sess.ExamID)
+		if !ok {
+			return fmt.Errorf("exam %q no longer in catalog", sess.ExamID)
+		}
+		spec := exam.Infrastructure.Providers[input.Provider]
+		log := m.Logger.With("session_id", sess.ID, "provider", input.Provider)
+		if spec.TeardownScript != "" {
+			scriptPath := filepath.Join(exam.Dir, spec.TeardownScript)
+			if err := teardownOnAllHosts(ctx, log, sess.SSHPrivateKeyPath, scriptPath, input.BYOHosts.Hosts); err != nil {
+				_ = m.Store.Update(sessID, func(s *Session) {
+					s.Status = StatusFailed
+					s.Error = err.Error()
+				})
+				return err
+			}
+		}
+		_ = m.Store.Update(sessID, func(s *Session) { s.Status = StatusDestroyed })
+		return nil
+	}
+
 	env, err := m.resolveEnv(ctx, input, "ilabhu-destroy-"+sess.ID)
 	if err != nil {
 		return err
 	}
-
-	_ = m.Store.Update(sessID, func(s *Session) { s.Status = StatusDestroying })
 	moduleDst := filepath.Join(sess.Workdir, "module")
 	if err := m.TF.Destroy(ctx, moduleDst, env); err != nil {
 		_ = m.Store.Update(sessID, func(s *Session) {

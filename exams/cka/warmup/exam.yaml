@@ -38,7 +38,16 @@ infrastructure:
       inputs:
         location: westeurope
         vm_size: Standard_B2s
-    # byo-hosts will be added in a follow-up PR.
+    byo-hosts:
+      setup_script: ./byo-hosts/setup.sh
+      teardown_script: ./byo-hosts/teardown.sh
+      roles:
+        - name: node
+          count: 1
+          min_specs:
+            cpu: 2
+            ram_gb: 2
+            distro: "ubuntu>=22.04|rocky>=9|debian>=12"
 
 access:
   kind: kubeconfig
