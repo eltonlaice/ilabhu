@@ -16,7 +16,7 @@ const PROVIDER_LABELS: Record<Provider, string> = {
   "byo-hosts": "Your Linux hosts",
 };
 
-const IMPLEMENTED: Provider[] = ["aws", "digitalocean", "gcp"];
+const IMPLEMENTED: Provider[] = ["aws", "digitalocean", "gcp", "azure"];
 
 type Props = {
   examID: string;
@@ -36,6 +36,10 @@ export function StartSessionForm({ examID, providers }: Props) {
   const [awsExternalId, setAwsExternalId] = useState("");
   const [doToken, setDoToken] = useState("");
   const [gcpServiceAccountKey, setGcpServiceAccountKey] = useState("");
+  const [azureTenantId, setAzureTenantId] = useState("");
+  const [azureSubscriptionId, setAzureSubscriptionId] = useState("");
+  const [azureClientId, setAzureClientId] = useState("");
+  const [azureClientSecret, setAzureClientSecret] = useState("");
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -70,6 +74,16 @@ export function StartSessionForm({ examID, providers }: Props) {
       creds = {
         provider,
         gcp: { service_account_key: key },
+      };
+    } else if (provider === "azure") {
+      creds = {
+        provider,
+        azure: {
+          tenant_id: azureTenantId.trim(),
+          subscription_id: azureSubscriptionId.trim(),
+          client_id: azureClientId.trim(),
+          client_secret: azureClientSecret.trim(),
+        },
       };
     } else {
       setError(`Provider ${provider} is not implemented yet.`);
@@ -138,6 +152,17 @@ export function StartSessionForm({ examID, providers }: Props) {
         <GCPFields
           serviceAccountKey={gcpServiceAccountKey}
           setServiceAccountKey={setGcpServiceAccountKey}
+        />
+      ) : provider === "azure" ? (
+        <AzureFields
+          tenantId={azureTenantId}
+          setTenantId={setAzureTenantId}
+          subscriptionId={azureSubscriptionId}
+          setSubscriptionId={setAzureSubscriptionId}
+          clientId={azureClientId}
+          setClientId={setAzureClientId}
+          clientSecret={azureClientSecret}
+          setClientSecret={setAzureClientSecret}
         />
       ) : (
         <p className="text-sm text-neutral-500">
@@ -224,6 +249,109 @@ function AWSFields({
           never sent to anywhere except the control plane on this same origin.
         </p>
       </div>
+    </div>
+  );
+}
+
+function AzureFields({
+  tenantId,
+  setTenantId,
+  subscriptionId,
+  setSubscriptionId,
+  clientId,
+  setClientId,
+  clientSecret,
+  setClientSecret,
+}: {
+  tenantId: string;
+  setTenantId: (v: string) => void;
+  subscriptionId: string;
+  setSubscriptionId: (v: string) => void;
+  clientId: string;
+  setClientId: (v: string) => void;
+  clientSecret: string;
+  setClientSecret: (v: string) => void;
+}) {
+  const inputClass =
+    "mt-1 block w-full rounded-md border border-neutral-300 bg-white px-3 py-2 font-mono text-sm shadow-sm focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500 dark:border-neutral-700 dark:bg-neutral-950";
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div>
+          <label
+            htmlFor="az-tenant"
+            className="block text-sm font-medium text-neutral-700 dark:text-neutral-300"
+          >
+            Tenant ID
+          </label>
+          <input
+            id="az-tenant"
+            required
+            value={tenantId}
+            onChange={(e) => setTenantId(e.target.value)}
+            placeholder="11111111-1111-1111-1111-111111111111"
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label
+            htmlFor="az-sub"
+            className="block text-sm font-medium text-neutral-700 dark:text-neutral-300"
+          >
+            Subscription ID
+          </label>
+          <input
+            id="az-sub"
+            required
+            value={subscriptionId}
+            onChange={(e) => setSubscriptionId(e.target.value)}
+            placeholder="22222222-2222-2222-2222-222222222222"
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label
+            htmlFor="az-client"
+            className="block text-sm font-medium text-neutral-700 dark:text-neutral-300"
+          >
+            Client ID
+          </label>
+          <input
+            id="az-client"
+            required
+            value={clientId}
+            onChange={(e) => setClientId(e.target.value)}
+            placeholder="33333333-3333-3333-3333-333333333333"
+            className={inputClass}
+          />
+        </div>
+        <div>
+          <label
+            htmlFor="az-secret"
+            className="block text-sm font-medium text-neutral-700 dark:text-neutral-300"
+          >
+            Client secret
+          </label>
+          <input
+            id="az-secret"
+            required
+            type="password"
+            autoComplete="off"
+            value={clientSecret}
+            onChange={(e) => setClientSecret(e.target.value)}
+            className={inputClass}
+          />
+        </div>
+      </div>
+      <p className="text-xs text-neutral-500">
+        Create a Service Principal:{" "}
+        <code className="font-mono">
+          az ad sp create-for-rbac --name ilabhu-runner --role Contributor
+          --scopes /subscriptions/&lt;sub&gt;
+        </code>
+        . Stored in <code className="font-mono">sessionStorage</code> only —
+        never sent anywhere except the control plane on this same origin.
+      </p>
     </div>
   );
 }

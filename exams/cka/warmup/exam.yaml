@@ -33,7 +33,12 @@ infrastructure:
         region: europe-west1
         zone: europe-west1-b
         machine_type: e2-small
-    # azure, byo-hosts will be added in follow-up PRs.
+    azure:
+      module: ./azure
+      inputs:
+        location: westeurope
+        vm_size: Standard_B2s
+    # byo-hosts will be added in a follow-up PR.
 
 access:
   kind: kubeconfig

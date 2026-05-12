@@ -13,6 +13,7 @@ import (
 
 	"github.com/eltonlaice/ilabhu/control-plane/internal/catalog"
 	awscloud "github.com/eltonlaice/ilabhu/control-plane/internal/cloud/aws"
+	azurecloud "github.com/eltonlaice/ilabhu/control-plane/internal/cloud/azure"
 	docloud "github.com/eltonlaice/ilabhu/control-plane/internal/cloud/digitalocean"
 	gcpcloud "github.com/eltonlaice/ilabhu/control-plane/internal/cloud/gcp"
 	"github.com/eltonlaice/ilabhu/control-plane/internal/provisioner"
@@ -27,7 +28,8 @@ type StartInput struct {
 	AWS          *AWSCredentials
 	DigitalOcean *DOCredentials
 	GCP          *GCPCredentials
-	// Azure, BYOHosts to be added in follow-up PRs.
+	Azure        *AzureCredentials
+	// BYOHosts to be added in a follow-up PR.
 }
 
 // AWSCredentials carries the role ARN + external id pair the control plane
@@ -50,6 +52,16 @@ type DOCredentials struct {
 // memory for the duration of each Terraform apply/destroy.
 type GCPCredentials struct {
 	ServiceAccountKey string
+}
+
+// AzureCredentials carries the four pieces an Azure AD Service Principal
+// auth flow needs. All four are required; the azure adapter shapes them
+// into ARM_* env vars for the azurerm Terraform provider.
+type AzureCredentials struct {
+	TenantID       string
+	SubscriptionID string
+	ClientID       string
+	ClientSecret   string
 }
 
 // Manager owns the lifecycle of sessions: it talks to the catalog, provisions
@@ -102,6 +114,19 @@ func validateProviderInput(input StartInput) error {
 		if input.GCP == nil || input.GCP.ServiceAccountKey == "" {
 			return errors.New("gcp.service_account_key is required")
 		}
+	case "azure":
+		if input.Azure == nil {
+			return errors.New("azure credentials are required")
+		}
+		creds := azurecloud.Credentials{
+			TenantID:       input.Azure.TenantID,
+			SubscriptionID: input.Azure.SubscriptionID,
+			ClientID:       input.Azure.ClientID,
+			ClientSecret:   input.Azure.ClientSecret,
+		}
+		if err := creds.Validate(); err != nil {
+			return err
+		}
 	default:
 		return fmt.Errorf("provider %q not implemented yet", input.Provider)
 	}
@@ -127,6 +152,14 @@ func (m *Manager) resolveEnv(ctx context.Context, input StartInput, sessionName 
 		creds, err := gcpcloud.NewCredentials(input.GCP.ServiceAccountKey)
 		if err != nil {
 			return nil, fmt.Errorf("gcp credentials: %w", err)
+		}
+		return creds.AsEnv(), nil
+	case "azure":
+		creds := azurecloud.Credentials{
+			TenantID:       input.Azure.TenantID,
+			SubscriptionID: input.Azure.SubscriptionID,
+			ClientID:       input.Azure.ClientID,
+			ClientSecret:   input.Azure.ClientSecret,
 		}
 		return creds.AsEnv(), nil
 	default:

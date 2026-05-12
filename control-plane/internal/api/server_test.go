@@ -282,6 +282,36 @@ func TestCreateSession_SuccessGCP(t *testing.T) {
 	}
 }
 
+func TestCreateSession_SuccessAzure(t *testing.T) {
+	mgr := &fakeManager{
+		startFn: func(_ context.Context, examID string, in session.StartInput) (*session.Session, error) {
+			if examID != "cka/example" || in.Provider != "azure" || in.Azure == nil {
+				t.Fatalf("unexpected args: %q %+v", examID, in)
+			}
+			if in.Azure.TenantID == "" || in.Azure.SubscriptionID == "" || in.Azure.ClientID == "" || in.Azure.ClientSecret == "" {
+				t.Errorf("azure block not fully forwarded: %+v", in.Azure)
+			}
+			return &session.Session{
+				ID:        "sess-az-1",
+				ExamID:    examID,
+				Provider:  in.Provider,
+				Status:    session.StatusProvisioning,
+				CreatedAt: time.Now().UTC(),
+				UpdatedAt: time.Now().UTC(),
+			}, nil
+		},
+	}
+	srv := newTestServer(t, emptyCatalog(t), mgr)
+
+	body := strings.NewReader(`{"exam_id":"cka/example","provider":"azure","azure":{"tenant_id":"t","subscription_id":"s","client_id":"c","client_secret":"x"}}`)
+	rr := httptest.NewRecorder()
+	srv.Routes().ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/v1/sessions", body))
+
+	if rr.Code != http.StatusAccepted {
+		t.Fatalf("status = %d, want 202; body=%s", rr.Code, rr.Body.String())
+	}
+}
+
 func TestCreateSession_RejectsMissingExamID(t *testing.T) {
 	srv := newTestServer(t, emptyCatalog(t), &fakeManager{})
 
