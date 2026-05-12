@@ -2,6 +2,9 @@ package validator
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -166,7 +169,7 @@ func TestRun_UnknownValidationKind(t *testing.T) {
 	stubKubectlOnPATH(t)
 	task := catalog.Task{
 		Validations: []catalog.Validation{
-			{Kind: "http", URL: "http://example.com"},
+			{Kind: "future-kind"},
 		},
 	}
 	results, err := Run(context.Background(), task, kubeAccess([]byte("k")))
@@ -175,6 +178,9 @@ func TestRun_UnknownValidationKind(t *testing.T) {
 	}
 	if results[0].Passed {
 		t.Error("unimplemented kind should not pass")
+	}
+	if results[0].Message == "" {
+		t.Error("unimplemented kind should explain itself in Message")
 	}
 }
 
@@ -187,7 +193,7 @@ func TestRun_RunsAllValidationsEvenAfterFailure(t *testing.T) {
 		Validations: []catalog.Validation{
 			{Kind: "kubectl", ExpectEquals: ptrString("right")},
 			{Kind: "kubectl", ExpectContains: ptrString("wrong")},
-			{Kind: "http", URL: "http://example.com"},
+			{Kind: "future-kind"},
 		},
 	}
 	results, _ := Run(context.Background(), task, kubeAccess([]byte("k")))
@@ -201,7 +207,7 @@ func TestRun_RunsAllValidationsEvenAfterFailure(t *testing.T) {
 		t.Error("[1] should pass")
 	}
 	if results[2].Passed {
-		t.Error("[2] (http, unimplemented) should fail")
+		t.Error("[2] (unimplemented) should fail")
 	}
 }
 
@@ -325,6 +331,144 @@ func TestRun_Shell_EmptyScriptFails(t *testing.T) {
 	results, _ := Run(context.Background(), task, sshAccess())
 	if results[0].Passed {
 		t.Error("empty script should fail validation")
+	}
+}
+
+// --- http validation kind ---
+
+func TestRun_HTTP_DefaultStatus200Passes(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	task := catalog.Task{
+		Validations: []catalog.Validation{
+			{Kind: "http", URL: srv.URL},
+		},
+	}
+	results, _ := Run(context.Background(), task, Access{})
+	if !results[0].Passed {
+		t.Errorf("default 200 should pass: %+v", results)
+	}
+}
+
+func TestRun_HTTP_ExpectStatusOverride(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusTeapot)
+	}))
+	defer srv.Close()
+	teapot := http.StatusTeapot
+
+	task := catalog.Task{
+		Validations: []catalog.Validation{
+			{Kind: "http", URL: srv.URL, ExpectStatus: &teapot},
+		},
+	}
+	results, _ := Run(context.Background(), task, Access{})
+	if !results[0].Passed {
+		t.Errorf("expect_status=418 should pass when server returns 418: %+v", results)
+	}
+}
+
+func TestRun_HTTP_StatusMismatchFails(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	task := catalog.Task{
+		Validations: []catalog.Validation{
+			{Kind: "http", URL: srv.URL},
+		},
+	}
+	results, _ := Run(context.Background(), task, Access{})
+	if results[0].Passed {
+		t.Error("server 500 should fail default-200 expectation")
+	}
+}
+
+func TestRun_HTTP_ExpectBodyContains(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"status":"ok","version":"1.2.3"}`))
+	}))
+	defer srv.Close()
+
+	task := catalog.Task{
+		Validations: []catalog.Validation{
+			{Kind: "http", URL: srv.URL, ExpectBodyHas: ptrString(`"version":"1.2.3"`)},
+		},
+	}
+	results, _ := Run(context.Background(), task, Access{})
+	if !results[0].Passed {
+		t.Errorf("expect_body_contains should match: %+v", results)
+	}
+}
+
+func TestRun_HTTP_ExpectBodyContainsMissingFails(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("nope"))
+	}))
+	defer srv.Close()
+
+	task := catalog.Task{
+		Validations: []catalog.Validation{
+			{Kind: "http", URL: srv.URL, ExpectBodyHas: ptrString("ok")},
+		},
+	}
+	results, _ := Run(context.Background(), task, Access{})
+	if results[0].Passed {
+		t.Error("expect_body_contains absent should fail")
+	}
+}
+
+func TestRun_HTTP_PublicIPSubstitution(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	// httptest.Server URL is like http://127.0.0.1:54321. Split it so we can
+	// rebuild it with the {{public_ip}} substitution; access.SSHHost becomes
+	// the host:port substring.
+	u, err := url.Parse(srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	task := catalog.Task{
+		Validations: []catalog.Validation{
+			{Kind: "http", URL: u.Scheme + "://{{public_ip}}/healthz"},
+		},
+	}
+	access := Access{SSHHost: u.Host}
+	results, _ := Run(context.Background(), task, access)
+	if !results[0].Passed {
+		t.Errorf("{{public_ip}} substitution should reach the test server: %+v", results)
+	}
+}
+
+func TestRun_HTTP_EmptyURLFails(t *testing.T) {
+	task := catalog.Task{
+		Validations: []catalog.Validation{
+			{Kind: "http", URL: ""},
+		},
+	}
+	results, _ := Run(context.Background(), task, Access{})
+	if results[0].Passed {
+		t.Error("empty url should fail validation")
+	}
+}
+
+func TestRun_HTTP_RequestErrorFails(t *testing.T) {
+	// 127.0.0.1:1 is reliably refused on the test host.
+	task := catalog.Task{
+		Validations: []catalog.Validation{
+			{Kind: "http", URL: "http://127.0.0.1:1/"},
+		},
+	}
+	results, _ := Run(context.Background(), task, Access{})
+	if results[0].Passed {
+		t.Error("unreachable url should fail validation, not error")
 	}
 }
 
