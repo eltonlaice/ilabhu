@@ -9,7 +9,7 @@
 
 Open source. Exam-focused (CKA, CKAD, CKS, RHCSA, ...). Provisioned in your own AWS, GCP, Azure or DigitalOcean account — or on Linux servers you already own. No shared sandbox, no subscription.
 
-🔗 **Landing page:** [eltonlaice.github.io/ilabhu](https://eltonlaice.github.io/ilabhu/)
+🔗 **Landing page:** [ilabhu.com](https://ilabhu.com/) (custom domain on GitHub Pages)
 
 ---
 
