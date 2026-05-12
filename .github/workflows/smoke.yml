@@ -58,7 +58,7 @@ jobs:
         run: |
           body=$(curl -sf http://127.0.0.1:18080/healthz)
           echo "$body"
-          echo "$body" | grep -q '"status":"ok"' || {
+          echo "$body" | jq -e '.status == "ok"' >/dev/null || {
             echo "::error::unexpected /healthz body"
             exit 1
           }
@@ -67,24 +67,22 @@ jobs:
         run: |
           body=$(curl -sf http://127.0.0.1:18080/v1/exams)
           echo "$body"
-          count=$(echo "$body" | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))')
+          count=$(echo "$body" | jq 'length')
           if [ "$count" -lt 1 ]; then
             echo "::error::catalog returned 0 exams"
             exit 1
           fi
           echo "catalog returned $count exam(s)"
 
-      - name: GET /v1/exams/{warmup} surfaces tasks
+      - name: GET /v1/exams - cka warmup surfaces tasks
         run: |
           body=$(curl -sf http://127.0.0.1:18080/v1/exams/cka/warmup)
-          echo "$body" | python3 -c '
-import json, sys
-d = json.load(sys.stdin)
-assert d["id"] == "cka/warmup", d["id"]
-assert "aws" in d["providers"], d["providers"]
-assert len(d["tasks"]) >= 1, d
-print("warmup ok:", d["title"])
-'
+          echo "$body" | jq -e '
+            .id == "cka/warmup"
+            and (.providers | index("aws"))
+            and (.tasks | length >= 1)
+          ' >/dev/null
+          echo "warmup ok: $(echo "$body" | jq -r .title)"
 
       - name: Stop ilabhud
         if: always()
