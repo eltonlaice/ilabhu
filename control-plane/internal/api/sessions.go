@@ -22,6 +22,12 @@ type doCredsBody struct {
 	Token string `json:"token"`
 }
 
+// gcpCredsBody is the Google Cloud provider credentials block. The project id
+// is extracted server-side from `service_account_key`'s JSON.
+type gcpCredsBody struct {
+	ServiceAccountKey string `json:"service_account_key"`
+}
+
 // sessionRequest is the create- and destroy-session request body. Each
 // supported provider has its own optional block; the active one is selected
 // by the `provider` discriminator.
@@ -30,6 +36,7 @@ type sessionRequest struct {
 	Provider     string        `json:"provider"`
 	AWS          *awsCredsBody `json:"aws,omitempty"`
 	DigitalOcean *doCredsBody  `json:"digitalocean,omitempty"`
+	GCP          *gcpCredsBody `json:"gcp,omitempty"`
 }
 
 func (r *sessionRequest) toStartInput() session.StartInput {
@@ -43,6 +50,11 @@ func (r *sessionRequest) toStartInput() session.StartInput {
 	if r.DigitalOcean != nil {
 		in.DigitalOcean = &session.DOCredentials{
 			Token: r.DigitalOcean.Token,
+		}
+	}
+	if r.GCP != nil {
+		in.GCP = &session.GCPCredentials{
+			ServiceAccountKey: r.GCP.ServiceAccountKey,
 		}
 	}
 	return in

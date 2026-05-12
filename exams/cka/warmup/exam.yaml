@@ -27,7 +27,13 @@ infrastructure:
       inputs:
         region: ams3
         droplet_size: s-1vcpu-2gb
-    # gcp, azure, byo-hosts will be added in follow-up PRs.
+    gcp:
+      module: ./gcp
+      inputs:
+        region: europe-west1
+        zone: europe-west1-b
+        machine_type: e2-small
+    # azure, byo-hosts will be added in follow-up PRs.
 
 access:
   kind: kubeconfig
