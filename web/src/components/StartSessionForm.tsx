@@ -16,7 +16,7 @@ const PROVIDER_LABELS: Record<Provider, string> = {
   "byo-hosts": "Your Linux hosts",
 };
 
-const IMPLEMENTED: Provider[] = ["aws"];
+const IMPLEMENTED: Provider[] = ["aws", "digitalocean"];
 
 type Props = {
   examID: string;
@@ -34,6 +34,7 @@ export function StartSessionForm({ examID, providers }: Props) {
   // Provider-specific state — only the active provider's fields are read.
   const [awsRoleArn, setAwsRoleArn] = useState("");
   const [awsExternalId, setAwsExternalId] = useState("");
+  const [doToken, setDoToken] = useState("");
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -48,6 +49,11 @@ export function StartSessionForm({ examID, providers }: Props) {
           role_arn: awsRoleArn.trim(),
           external_id: awsExternalId.trim(),
         },
+      };
+    } else if (provider === "digitalocean") {
+      creds = {
+        provider,
+        digitalocean: { token: doToken.trim() },
       };
     } else {
       setError(`Provider ${provider} is not implemented yet.`);
@@ -110,6 +116,8 @@ export function StartSessionForm({ examID, providers }: Props) {
           externalId={awsExternalId}
           setExternalId={setAwsExternalId}
         />
+      ) : provider === "digitalocean" ? (
+        <DOFields token={doToken} setToken={setDoToken} />
       ) : (
         <p className="text-sm text-neutral-500">
           {PROVIDER_LABELS[provider]} adapter is not implemented yet.
@@ -193,6 +201,51 @@ function AWSFields({
         <p className="mt-1 text-xs text-neutral-500">
           Stored in <code className="font-mono">sessionStorage</code> only —
           never sent to anywhere except the control plane on this same origin.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function DOFields({
+  token,
+  setToken,
+}: {
+  token: string;
+  setToken: (v: string) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <label
+          htmlFor="do-token"
+          className="block text-sm font-medium text-neutral-700 dark:text-neutral-300"
+        >
+          DigitalOcean Personal Access Token
+        </label>
+        <input
+          id="do-token"
+          required
+          value={token}
+          onChange={(e) => setToken(e.target.value)}
+          type="password"
+          autoComplete="off"
+          placeholder="dop_v1_..."
+          className="mt-1 block w-full rounded-md border border-neutral-300 bg-white px-3 py-2 font-mono text-sm shadow-sm focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500 dark:border-neutral-700 dark:bg-neutral-950"
+        />
+        <p className="mt-1 text-xs text-neutral-500">
+          Create a token at{" "}
+          <a
+            className="underline"
+            href="https://cloud.digitalocean.com/account/api/tokens"
+            target="_blank"
+            rel="noreferrer"
+          >
+            cloud.digitalocean.com/account/api/tokens
+          </a>{" "}
+          with read+write scope. Stored in{" "}
+          <code className="font-mono">sessionStorage</code> only — never sent
+          anywhere except the control plane on this same origin.
         </p>
       </div>
     </div>

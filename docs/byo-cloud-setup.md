@@ -1,10 +1,44 @@
-# BYO-cloud setup (AWS)
+# BYO-cloud setup
+
+ilabhu provisions every exam in your own cloud account. The control plane never holds long-lived credentials — it assumes a short-lived role (AWS) or holds the per-session token only in memory for the duration of the Terraform apply (DigitalOcean).
+
+This guide walks you through the one-time setup for each supported provider.
+
+> AWS and DigitalOcean adapters are shipped. GCP, Azure and BYO-hosts are on the roadmap.
+
+---
+
+## DigitalOcean (Personal Access Token)
+
+The DO adapter does not need a long-lived role; you generate a Personal Access Token (PAT) once, hand it to ilabhu on session start, and ilabhu only keeps it in memory while \`terraform apply\` runs.
+
+1. Sign in to https://cloud.digitalocean.com.
+2. Open **API → Tokens & Keys → Generate New Token**.
+3. Give it a name (e.g. \`ilabhu-lab-runner\`), pick the desired expiration, and grant the **read + write** scope.
+4. Copy the \`dop_v1_…\` value — it's shown once.
+5. Paste it into the **DigitalOcean Personal Access Token** field on the Start-session form, or pass it on the API directly:
+
+\`\`\`sh
+curl -sX POST http://127.0.0.1:8080/v1/sessions \
+  -H 'content-type: application/json' \
+  -d '{
+    "exam_id": "cka/warmup",
+    "provider": "digitalocean",
+    "digitalocean": { "token": "dop_v1_..." }
+  }'
+\`\`\`
+
+**Cost.** A \`s-1vcpu-2gb\` droplet in \`ams3\` is roughly \$0.018/hour — about \$0.04 for a 2-hour warmup session.
+
+**Tear-down.** Same token on \`DELETE\`. If you rotate the token between start and destroy, you'll need to terminate the droplet manually (the session id is in the droplet tags: \`ilabhu-session:<id>\`).
+
+---
+
+## AWS (sts:AssumeRole + external id)
 
 ilabhu provisions every exam in *your* AWS account. The control plane never holds long-lived credentials for your account — instead, it assumes a role you create, with an external id only it knows, and gets short-lived credentials for each exam session.
 
-This guide walks you through the one-time setup. It takes about 10 minutes.
-
-> GCP and Azure adapters are on the roadmap; only AWS is wired up today.
+The AWS setup is more involved (~10 minutes) than DigitalOcean but the resulting deployment surface is smaller.
 
 ## Concepts at a glance
 
