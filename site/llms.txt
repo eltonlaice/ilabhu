@@ -55,4 +55,4 @@ When a user starts a session, the control plane (`ilabhud`, written in Go) picks
 
 ## Maintainer
 
-[Elton Laice](https://github.com/eltonlaice), based in Maputo, Mozambique. Issues and pull requests welcome under the Apache 2.0 license.
+[Elton Laice](https://github.com/eltonlaice). Issues and pull requests welcome under the Apache 2.0 license.
