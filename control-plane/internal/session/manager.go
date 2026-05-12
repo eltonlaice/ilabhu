@@ -14,6 +14,7 @@ import (
 	"github.com/eltonlaice/ilabhu/control-plane/internal/catalog"
 	awscloud "github.com/eltonlaice/ilabhu/control-plane/internal/cloud/aws"
 	docloud "github.com/eltonlaice/ilabhu/control-plane/internal/cloud/digitalocean"
+	gcpcloud "github.com/eltonlaice/ilabhu/control-plane/internal/cloud/gcp"
 	"github.com/eltonlaice/ilabhu/control-plane/internal/provisioner"
 )
 
@@ -25,7 +26,8 @@ type StartInput struct {
 
 	AWS          *AWSCredentials
 	DigitalOcean *DOCredentials
-	// GCP, Azure, BYOHosts to be added in follow-up PRs.
+	GCP          *GCPCredentials
+	// Azure, BYOHosts to be added in follow-up PRs.
 }
 
 // AWSCredentials carries the role ARN + external id pair the control plane
@@ -40,6 +42,14 @@ type AWSCredentials struct {
 // memory for the duration of each Terraform apply/destroy.
 type DOCredentials struct {
 	Token string
+}
+
+// GCPCredentials carries a Google Cloud service account key in its raw JSON
+// form. The project id is parsed out of the JSON by the gcp adapter, so the
+// user only needs to paste one thing. Like DO, the key is held only in
+// memory for the duration of each Terraform apply/destroy.
+type GCPCredentials struct {
+	ServiceAccountKey string
 }
 
 // Manager owns the lifecycle of sessions: it talks to the catalog, provisions
@@ -88,6 +98,10 @@ func validateProviderInput(input StartInput) error {
 		if input.DigitalOcean == nil || input.DigitalOcean.Token == "" {
 			return errors.New("digitalocean.token is required")
 		}
+	case "gcp":
+		if input.GCP == nil || input.GCP.ServiceAccountKey == "" {
+			return errors.New("gcp.service_account_key is required")
+		}
 	default:
 		return fmt.Errorf("provider %q not implemented yet", input.Provider)
 	}
@@ -109,6 +123,12 @@ func (m *Manager) resolveEnv(ctx context.Context, input StartInput, sessionName 
 		return creds.AsEnv(), nil
 	case "digitalocean":
 		return docloud.Credentials{Token: input.DigitalOcean.Token}.AsEnv(), nil
+	case "gcp":
+		creds, err := gcpcloud.NewCredentials(input.GCP.ServiceAccountKey)
+		if err != nil {
+			return nil, fmt.Errorf("gcp credentials: %w", err)
+		}
+		return creds.AsEnv(), nil
 	default:
 		return nil, fmt.Errorf("provider %q not implemented yet", input.Provider)
 	}

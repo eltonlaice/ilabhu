@@ -16,7 +16,7 @@ const PROVIDER_LABELS: Record<Provider, string> = {
   "byo-hosts": "Your Linux hosts",
 };
 
-const IMPLEMENTED: Provider[] = ["aws", "digitalocean"];
+const IMPLEMENTED: Provider[] = ["aws", "digitalocean", "gcp"];
 
 type Props = {
   examID: string;
@@ -35,6 +35,7 @@ export function StartSessionForm({ examID, providers }: Props) {
   const [awsRoleArn, setAwsRoleArn] = useState("");
   const [awsExternalId, setAwsExternalId] = useState("");
   const [doToken, setDoToken] = useState("");
+  const [gcpServiceAccountKey, setGcpServiceAccountKey] = useState("");
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -54,6 +55,21 @@ export function StartSessionForm({ examID, providers }: Props) {
       creds = {
         provider,
         digitalocean: { token: doToken.trim() },
+      };
+    } else if (provider === "gcp") {
+      const key = gcpServiceAccountKey.trim();
+      try {
+        JSON.parse(key);
+      } catch {
+        setError(
+          "Service account key must be valid JSON. Paste the full file contents you downloaded from the GCP console.",
+        );
+        setSubmitting(false);
+        return;
+      }
+      creds = {
+        provider,
+        gcp: { service_account_key: key },
       };
     } else {
       setError(`Provider ${provider} is not implemented yet.`);
@@ -118,6 +134,11 @@ export function StartSessionForm({ examID, providers }: Props) {
         />
       ) : provider === "digitalocean" ? (
         <DOFields token={doToken} setToken={setDoToken} />
+      ) : provider === "gcp" ? (
+        <GCPFields
+          serviceAccountKey={gcpServiceAccountKey}
+          setServiceAccountKey={setGcpServiceAccountKey}
+        />
       ) : (
         <p className="text-sm text-neutral-500">
           {PROVIDER_LABELS[provider]} adapter is not implemented yet.
@@ -201,6 +222,50 @@ function AWSFields({
         <p className="mt-1 text-xs text-neutral-500">
           Stored in <code className="font-mono">sessionStorage</code> only —
           never sent to anywhere except the control plane on this same origin.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function GCPFields({
+  serviceAccountKey,
+  setServiceAccountKey,
+}: {
+  serviceAccountKey: string;
+  setServiceAccountKey: (v: string) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <label
+          htmlFor="gcp-sa-key"
+          className="block text-sm font-medium text-neutral-700 dark:text-neutral-300"
+        >
+          GCP Service Account key (JSON)
+        </label>
+        <textarea
+          id="gcp-sa-key"
+          required
+          rows={6}
+          value={serviceAccountKey}
+          onChange={(e) => setServiceAccountKey(e.target.value)}
+          placeholder='{"type":"service_account","project_id":"my-project",...}'
+          className="mt-1 block w-full rounded-md border border-neutral-300 bg-white px-3 py-2 font-mono text-xs shadow-sm focus:border-neutral-500 focus:outline-none focus:ring-1 focus:ring-neutral-500 dark:border-neutral-700 dark:bg-neutral-950"
+        />
+        <p className="mt-1 text-xs text-neutral-500">
+          Paste the full contents of the JSON key downloaded from{" "}
+          <a
+            className="underline"
+            href="https://console.cloud.google.com/iam-admin/serviceaccounts"
+            target="_blank"
+            rel="noreferrer"
+          >
+            console.cloud.google.com → Service Accounts
+          </a>
+          . The project id is auto-extracted from <code>project_id</code>.
+          Stored in <code className="font-mono">sessionStorage</code> only —
+          never sent anywhere except the control plane on this same origin.
         </p>
       </div>
     </div>
