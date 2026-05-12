@@ -28,15 +28,25 @@ type gcpCredsBody struct {
 	ServiceAccountKey string `json:"service_account_key"`
 }
 
+// azureCredsBody is the Azure provider credentials block (Service Principal
+// with client secret).
+type azureCredsBody struct {
+	TenantID       string `json:"tenant_id"`
+	SubscriptionID string `json:"subscription_id"`
+	ClientID       string `json:"client_id"`
+	ClientSecret   string `json:"client_secret"`
+}
+
 // sessionRequest is the create- and destroy-session request body. Each
 // supported provider has its own optional block; the active one is selected
 // by the `provider` discriminator.
 type sessionRequest struct {
-	ExamID       string        `json:"exam_id,omitempty"`
-	Provider     string        `json:"provider"`
-	AWS          *awsCredsBody `json:"aws,omitempty"`
-	DigitalOcean *doCredsBody  `json:"digitalocean,omitempty"`
-	GCP          *gcpCredsBody `json:"gcp,omitempty"`
+	ExamID       string          `json:"exam_id,omitempty"`
+	Provider     string          `json:"provider"`
+	AWS          *awsCredsBody   `json:"aws,omitempty"`
+	DigitalOcean *doCredsBody    `json:"digitalocean,omitempty"`
+	GCP          *gcpCredsBody   `json:"gcp,omitempty"`
+	Azure        *azureCredsBody `json:"azure,omitempty"`
 }
 
 func (r *sessionRequest) toStartInput() session.StartInput {
@@ -55,6 +65,14 @@ func (r *sessionRequest) toStartInput() session.StartInput {
 	if r.GCP != nil {
 		in.GCP = &session.GCPCredentials{
 			ServiceAccountKey: r.GCP.ServiceAccountKey,
+		}
+	}
+	if r.Azure != nil {
+		in.Azure = &session.AzureCredentials{
+			TenantID:       r.Azure.TenantID,
+			SubscriptionID: r.Azure.SubscriptionID,
+			ClientID:       r.Azure.ClientID,
+			ClientSecret:   r.Azure.ClientSecret,
 		}
 	}
 	return in
