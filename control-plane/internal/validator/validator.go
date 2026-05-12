@@ -4,9 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/eltonlaice/ilabhu/control-plane/internal/catalog"
 )
@@ -56,6 +59,8 @@ func Run(ctx context.Context, task catalog.Task, access Access) ([]Result, error
 			r.Passed, r.Message = runKubectl(ctx, kubePath, v)
 		case "shell":
 			r.Passed, r.Message = runShell(ctx, access, v)
+		case "http":
+			r.Passed, r.Message = runHTTP(ctx, access, v, httpClient)
 		default:
 			r.Passed = false
 			r.Message = fmt.Sprintf("validation kind %q not implemented", v.Kind)
@@ -152,6 +157,53 @@ func runShell(ctx context.Context, access Access, v catalog.Validation) (bool, s
 	}
 	if v.ExpectContains != nil && !strings.Contains(got, *v.ExpectContains) {
 		return false, fmt.Sprintf("expected output to contain %q, got %q", *v.ExpectContains, got)
+	}
+	return true, ""
+}
+
+// httpClient is shared across runHTTP calls. Timeout is intentionally generous
+// because a freshly-provisioned lab service may take a few seconds to wire
+// up; per-validation context still bounds the request.
+var httpClient = &http.Client{Timeout: 30 * time.Second}
+
+// runHTTP issues a GET against v.URL. The URL supports a `{{public_ip}}`
+// substitution that resolves to access.SSHHost, so manifests can target a
+// NodePort or LoadBalancer endpoint without hard-coding addresses.
+//
+// Default pass condition is status 200; expect_status overrides;
+// expect_body_contains matches against the (size-capped) response body.
+func runHTTP(ctx context.Context, access Access, v catalog.Validation, client *http.Client) (bool, string) {
+	if v.URL == "" {
+		return false, "http validation requires a non-empty url"
+	}
+	url := strings.ReplaceAll(v.URL, "{{public_ip}}", access.SSHHost)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return false, fmt.Sprintf("invalid url: %v", err)
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return false, fmt.Sprintf("http request failed: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	wantStatus := http.StatusOK
+	if v.ExpectStatus != nil {
+		wantStatus = *v.ExpectStatus
+	}
+	if resp.StatusCode != wantStatus {
+		return false, fmt.Sprintf("expected status %d, got %d", wantStatus, resp.StatusCode)
+	}
+
+	if v.ExpectBodyHas != nil {
+		body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+		if err != nil {
+			return false, fmt.Sprintf("read body: %v", err)
+		}
+		if !strings.Contains(string(body), *v.ExpectBodyHas) {
+			return false, fmt.Sprintf("expected body to contain %q", *v.ExpectBodyHas)
+		}
 	}
 	return true, ""
 }
