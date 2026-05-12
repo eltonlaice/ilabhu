@@ -84,7 +84,7 @@ tasks:
 
 ## 3. Add a Terraform module per provider
 
-Each provider you declare in `infrastructure.providers` needs a real implementation. Today only AWS ships; GCP, Azure, DigitalOcean, and BYO-hosts are stubs that the control plane will reject with "provider X not implemented yet" if a user picks them.
+Each provider you declare in `infrastructure.providers` needs a real module or script that the control plane can drive. All five adapters ship today: `aws`, `digitalocean`, `gcp`, `azure` (Terraform modules), and `byo-hosts` (SSH-driven setup / teardown scripts). The control plane will reject a `provider` value not listed in your manifest's `providers:` map with `exam %q does not declare provider %q`.
 
 ### AWS (the reference implementation)
 

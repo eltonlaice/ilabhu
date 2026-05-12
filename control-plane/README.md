@@ -8,7 +8,9 @@
 - **Terraform** 1.5+ on `PATH` (for cloud providers)
 - **kubectl** on `PATH` (used by the validator for `kind: kubectl` checks)
 - **ssh** and **ssh-keygen** on `PATH` (per-session keypair, kubeconfig fetch, BYO-hosts setup)
-- **AWS credentials** for the control plane itself, resolved via the standard AWS chain. Used only to call `sts:AssumeRole` against the user's account.
+- **Cloud credentials for the control plane**, only when the daemon needs to assume into the user's account:
+  - **AWS** — standard AWS chain (env vars, shared config, IRSA). The control plane only calls `sts:AssumeRole`; long-lived keys are not required for normal operation, but the chain must resolve to *something* that's trusted by the user's lab role.
+  - **DigitalOcean / GCP / Azure / BYO-hosts** — no control-plane credentials required. The user supplies the per-session token / SA key / Service Principal / SSH key on each request.
 
 ## Build
 
@@ -43,7 +45,7 @@ The daemon emits structured JSON logs on stdout (`slog`).
 | `GET` | `/healthz` | Liveness probe. |
 | `GET` | `/v1/exams` | List exams found in `-exams-dir`. |
 | `GET` | `/v1/exams/{id...}` | Full exam manifest (tasks, domains, providers). |
-| `POST` | `/v1/sessions` | Start a session. Body: `{"exam_id": "...", "provider": "aws", "aws": {"role_arn": "...", "external_id": "..."}}`. Returns `202` with the session record. |
+| `POST` | `/v1/sessions` | Start a session. Body: `{"exam_id": "...", "provider": "<aws\|digitalocean\|gcp\|azure\|byo-hosts>", "<provider>": {...}}`. The provider-specific block carries the credentials (see [`docs/byo-cloud-setup.md`](../docs/byo-cloud-setup.md)). Returns `202` with the session record. |
 | `GET` | `/v1/sessions/{id}` | Read session status, outputs, and (once `ready`) base64-encoded kubeconfig. |
 | `DELETE` | `/v1/sessions/{id}` | Tear down. Accepts the same provider credentials body as create. |
 | `POST` | `/v1/sessions/{id}/tasks/{task_id}/validate` | Run a task's validations against the session. |
@@ -60,19 +62,22 @@ curl http://127.0.0.1:8080/v1/exams
 
 ```
 control-plane/
-├── cmd/ilabhud/        # entrypoint
+├── cmd/ilabhud/         # entrypoint
 └── internal/
-    ├── api/            # HTTP handlers (stdlib net/http, Go 1.22 mux patterns)
-    ├── catalog/        # parses exams/<...>/exam.yaml on startup
-    ├── cloud/aws/      # sts:AssumeRole helper
-    ├── provisioner/    # shells out to terraform
-    ├── session/        # in-memory session store + lifecycle manager
-    └── validator/      # runs exam.yaml validations
+    ├── api/             # HTTP handlers (stdlib net/http, Go 1.22 mux patterns)
+    ├── catalog/         # parses exams/<...>/exam.yaml on startup
+    ├── cloud/aws/       # sts:AssumeRole helper
+    ├── cloud/digitalocean/  # PAT-based env adapter
+    ├── cloud/gcp/       # service-account-key adapter (project id from JSON)
+    ├── cloud/azure/     # Service Principal env adapter
+    ├── provisioner/     # shells out to terraform
+    ├── session/         # session store + lifecycle (cloud branch + byo-hosts branch)
+    └── validator/       # runs exam.yaml validations (kubectl, shell, http)
 ```
 
 ## Limitations (current)
 
 - Sessions live in memory; restarting the daemon loses them. Postgres is on the roadmap.
 - Sessions are not auto-destroyed on TTL expiry yet — call `DELETE` manually.
-- Only the AWS provider is implemented. GCP, Azure, DigitalOcean and BYO-hosts adapters live alongside `cloud/aws/` in follow-up PRs.
+- All five declared providers ship adapters today. Their Terraform modules (AWS, DigitalOcean, GCP, Azure) and the BYO-hosts setup script all target a **single-node** k3s; multi-node modules are on the roadmap.
 - No authentication on the HTTP API. Run it on `localhost` for now.
