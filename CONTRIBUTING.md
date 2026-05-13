@@ -7,7 +7,7 @@ Thanks for considering a contribution. ilabhu is small and early — direction i
 - **Add an exam.** New exams (CKA, CKAD, CKS, RHCSA, ...) are the highest-leverage contribution. See [docs/authoring-an-exam.md](docs/authoring-an-exam.md) for a step-by-step walkthrough and [docs/exam-schema.md](docs/exam-schema.md) for the manifest reference.
 - **Fix a bug** you hit while running the project locally.
 - **Improve docs.** READMEs, examples, the lab schema reference, the BYO-cloud setup guide.
-- **Add a cloud adapter.** GCP and Azure adapters are wanted; the AWS adapter at `control-plane/internal/cloud/aws/` is the reference shape.
+- **Add a provider adapter.** All five declared providers ship today (AWS, DigitalOcean, GCP, Azure, BYO-hosts); the next wave is Hetzner Cloud, Linode, Vultr, OVH, Scaleway. The path is mechanical — see [docs/adding-a-provider.md](docs/adding-a-provider.md).
 
 ## Before opening a large PR
 
