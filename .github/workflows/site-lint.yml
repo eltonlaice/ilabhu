@@ -1,0 +1,37 @@
+name: Site lint
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - ".github/workflows/site-lint.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "site/**"
+      - ".github/workflows/site-lint.yml"
+  workflow_dispatch:
+
+# Opt actions into the Node.js 24 runtime ahead of the June 2026 cutover.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Site lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.x"
+
+      - name: Lint site/
+        run: python3 site/.linter.py

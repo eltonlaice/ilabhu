@@ -1,0 +1,14 @@
+/* TEAM */
+Maintainer: Elton Laice
+Site: https://github.com/eltonlaice
+GitHub: @eltonlaice
+
+/* THANKS */
+Contributors: https://github.com/eltonlaice/ilabhu/graphs/contributors
+
+/* SITE */
+Source: https://github.com/eltonlaice/ilabhu
+Standards: HTML5, CSS3, JSON-LD (schema.org), llms.txt
+License: Apache-2.0 (https://www.apache.org/licenses/LICENSE-2.0)
+Components: zero JavaScript on the landing page; inline SVG icons; no
+            third-party trackers, fonts or analytics
