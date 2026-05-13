@@ -1,0 +1,12 @@
+# ilabhu security disclosure policy — see https://www.rfc-editor.org/rfc/rfc9116
+#
+# Use the GitHub Security Advisories private vulnerability reporting flow.
+# Public issues, social media, or email-to-maintainer should NOT be used for
+# anything that has a security impact on ilabhu deployments.
+
+Contact: https://github.com/eltonlaice/ilabhu/security/advisories/new
+Expires: 2027-05-12T23:59:59.000Z
+Preferred-Languages: en, pt
+Canonical: https://ilabhu.com/.well-known/security.txt
+Policy: https://github.com/eltonlaice/ilabhu/blob/main/SECURITY.md
+Acknowledgments: https://github.com/eltonlaice/ilabhu/security/advisories
