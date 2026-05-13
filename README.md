@@ -56,7 +56,7 @@ An exam is a versioned directory under `exams/` containing:
 
 When a user starts a session, they pick a provider; the control plane uses the matching adapter to provision the environment in the user's account or hosts, opens a browser terminal, and runs the validation rules on demand.
 
-For the IAM role + external-id setup, see [docs/byo-cloud-setup.md](docs/byo-cloud-setup.md). For the full architecture, see [docs/architecture.md](docs/architecture.md). For the manifest schema, see [docs/exam-schema.md](docs/exam-schema.md). To add your own exam, see [docs/authoring-an-exam.md](docs/authoring-an-exam.md). When something breaks, see [docs/troubleshooting.md](docs/troubleshooting.md).
+For the IAM role + external-id setup, see [docs/byo-cloud-setup.md](docs/byo-cloud-setup.md). For per-provider session costs and a "which to pick" decision tree, see [docs/cost-comparison.md](docs/cost-comparison.md). For the full architecture, see [docs/architecture.md](docs/architecture.md). For the manifest schema, see [docs/exam-schema.md](docs/exam-schema.md). To add your own exam, see [docs/authoring-an-exam.md](docs/authoring-an-exam.md). When something breaks, see [docs/troubleshooting.md](docs/troubleshooting.md).
 
 ## Roadmap
 
