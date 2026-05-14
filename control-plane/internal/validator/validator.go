@@ -8,11 +8,26 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/eltonlaice/ilabhu/control-plane/internal/catalog"
 )
+
+// matchRegex compiles `pattern` and returns whether it matches `got`. A bad
+// pattern is reported in the message so the exam author finds out at run-time
+// instead of guessing why their validation never passes.
+func matchRegex(got, pattern string) (bool, string) {
+	re, err := regexp.Compile(pattern)
+	if err != nil {
+		return false, fmt.Sprintf("invalid expect_regex %q: %v", pattern, err)
+	}
+	if !re.MatchString(got) {
+		return false, fmt.Sprintf("expected output to match /%s/, got %q", pattern, got)
+	}
+	return true, ""
+}
 
 // Access carries everything a validation kind might need to reach the
 // session's environment. Each kind reads the subset it needs; missing fields
@@ -110,6 +125,11 @@ func runKubectl(ctx context.Context, kubeconfigPath string, v catalog.Validation
 	if v.ExpectContains != nil && !strings.Contains(got, *v.ExpectContains) {
 		return false, fmt.Sprintf("expected output to contain %q, got %q", *v.ExpectContains, got)
 	}
+	if v.ExpectRegex != nil {
+		if ok, msg := matchRegex(got, *v.ExpectRegex); !ok {
+			return false, msg
+		}
+	}
 	return true, ""
 }
 
@@ -158,6 +178,11 @@ func runShell(ctx context.Context, access Access, v catalog.Validation) (bool, s
 	if v.ExpectContains != nil && !strings.Contains(got, *v.ExpectContains) {
 		return false, fmt.Sprintf("expected output to contain %q, got %q", *v.ExpectContains, got)
 	}
+	if v.ExpectRegex != nil {
+		if ok, msg := matchRegex(got, *v.ExpectRegex); !ok {
+			return false, msg
+		}
+	}
 	return true, ""
 }
 
@@ -196,13 +221,18 @@ func runHTTP(ctx context.Context, access Access, v catalog.Validation, client *h
 		return false, fmt.Sprintf("expected status %d, got %d", wantStatus, resp.StatusCode)
 	}
 
-	if v.ExpectBodyHas != nil {
+	if v.ExpectBodyHas != nil || v.ExpectRegex != nil {
 		body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 		if err != nil {
 			return false, fmt.Sprintf("read body: %v", err)
 		}
-		if !strings.Contains(string(body), *v.ExpectBodyHas) {
+		if v.ExpectBodyHas != nil && !strings.Contains(string(body), *v.ExpectBodyHas) {
 			return false, fmt.Sprintf("expected body to contain %q", *v.ExpectBodyHas)
+		}
+		if v.ExpectRegex != nil {
+			if ok, msg := matchRegex(string(body), *v.ExpectRegex); !ok {
+				return false, msg
+			}
 		}
 	}
 	return true, ""
