@@ -79,6 +79,10 @@ For the IAM role + external-id setup, see [docs/byo-cloud-setup.md](docs/byo-clo
 - [x] `docker compose` self-host bundle (see [deploy/README.md](deploy/README.md))
 - [ ] Workload Identity Federation for GCP / Azure (currently SA key / SP secret)
 
+## Releases
+
+See [CHANGELOG.md](./CHANGELOG.md) for what shipped in each release.
+
 ## License
 
 Apache License 2.0. See [LICENSE](./LICENSE).
