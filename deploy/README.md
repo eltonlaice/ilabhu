@@ -42,7 +42,28 @@ The control-plane image bundles `terraform` (pinned via the `TERRAFORM_VERSION` 
 
 CI's smoke job exercises the `make run` path; we have not yet wired a compose-up smoke. It is on the roadmap.
 
-## Bumping pinned versions
+## Use a published image instead of building locally
+
+Starting with v0.1.0, every release tag is published to GHCR:
+
+- <https://github.com/eltonlaice/ilabhu/pkgs/container/ilabhud>
+- <https://github.com/eltonlaice/ilabhu/pkgs/container/ilabhu-web>
+
+To run the bundle without building anything, pin the tag and skip the build step:
+
+```sh
+ILABHU_IMAGE_TAG=v0.1.0 docker compose -f deploy/docker-compose.yml up \
+  --no-build --pull always
+```
+
+Available platforms: `linux/amd64`, `linux/arm64`. Builds are produced with [build provenance](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestations-to-establish-provenance-for-builds) and an SBOM attached to each image; verify with:
+
+```sh
+gh attestation verify oci://ghcr.io/eltonlaice/ilabhud:v0.1.0 \
+  --owner eltonlaice
+```
+
+## Bumping pinned versions (local build)
 
 ```sh
 docker compose -f deploy/docker-compose.yml build \

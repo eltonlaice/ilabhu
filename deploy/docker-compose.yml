@@ -10,11 +10,16 @@
 #   /var/lib/ilabhu persisted in the named volume `ilabhu-state`.
 # - web (Next.js 16 standalone) on :3000, proxying /api/* to ilabhud.
 
+x-image-tag: &image-tag ${ILABHU_IMAGE_TAG:-latest}
+
 services:
   ilabhud:
+    # By default, build from source. To use a pre-built image from GHCR
+    # instead, comment out 'build:' and set ILABHU_IMAGE_TAG=v0.1.0 (or any
+    # tag from https://github.com/eltonlaice/ilabhu/pkgs/container/ilabhud).
     build:
       context: ../control-plane
-    image: ilabhu/ilabhud:dev
+    image: ghcr.io/eltonlaice/ilabhud:${ILABHU_IMAGE_TAG:-dev}
     container_name: ilabhud
     restart: unless-stopped
     ports:
@@ -36,7 +41,7 @@ services:
   web:
     build:
       context: ../web
-    image: ilabhu/web:dev
+    image: ghcr.io/eltonlaice/ilabhu-web:${ILABHU_IMAGE_TAG:-dev}
     container_name: ilabhu-web
     restart: unless-stopped
     ports:
