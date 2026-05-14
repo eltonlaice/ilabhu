@@ -6,7 +6,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- **GHCR publish workflow.** Every tag pushed to `main` matching `v*` now builds and publishes multi-arch images (`linux/amd64`, `linux/arm64`) for both `ilabhud` and `ilabhu-web` to `ghcr.io/eltonlaice/`. Builds carry [provenance attestations](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestations-to-establish-provenance-for-builds) and an SBOM. `deploy/docker-compose.yml` now accepts `ILABHU_IMAGE_TAG=<tag>` and pulls the published images instead of building locally.
 
 ## [0.1.0] — 2026-05-13
 
