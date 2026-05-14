@@ -6,9 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [0.1.1] — 2026-05-15
+
 ### Added
 
 - **GHCR publish workflow.** Every tag pushed to `main` matching `v*` now builds and publishes multi-arch images (`linux/amd64`, `linux/arm64`) for both `ilabhud` and `ilabhu-web` to `ghcr.io/eltonlaice/`. Builds carry [provenance attestations](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestations-to-establish-provenance-for-builds) and an SBOM. `deploy/docker-compose.yml` now accepts `ILABHU_IMAGE_TAG=<tag>` and pulls the published images instead of building locally.
+
+### Fixed
+
+- **`web/public/` missing on fresh checkout.** The Docker build for `ilabhu-web` did `COPY --from=build /app/public ./public` but `web/public/` was an empty directory that never made it into git, so the COPY failed on every fresh checkout. Added a `.gitkeep` marker. Caught immediately when the new GHCR workflow tried to backfill v0.1.0 — `ilabhud` built and pushed fine; `ilabhu-web` errored at this step. v0.1.0 itself shipped before the publish workflow existed, so the bug only surfaces when consumers try to build the v0.1.0 source tree from a fresh clone.
 
 ## [0.1.0] — 2026-05-13
 
@@ -106,5 +114,6 @@ Three validation kinds, each evaluated per task:
 - `Makefile` with `build / test / cover / lint / vet / fmt / run / web-* / smoke / check / clean / compose-*`.
 - `.editorconfig`, `.golangci.yml`, repo metadata (description, topics).
 
-[Unreleased]: https://github.com/eltonlaice/ilabhu/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/eltonlaice/ilabhu/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/eltonlaice/ilabhu/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/eltonlaice/ilabhu/releases/tag/v0.1.0
