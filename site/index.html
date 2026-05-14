@@ -166,47 +166,151 @@
 
     <main>
       <section class="hero container">
-        <p class="eyebrow">Open source · Apache 2.0 · Pre-alpha</p>
-        <h1>Practice the full certification exam, on infrastructure you control.</h1>
-        <p class="lede">
-          ilabhu provisions a full exam environment (CKA, CKAD, CKS, RHCSA, ...) in your own cloud
-          account or on Linux servers you already own. Multi-domain, time-bounded, scored. No shared
-          sandbox, no subscription.
-        </p>
-        <div class="cta-row">
-          <a class="cta primary" href="https://github.com/eltonlaice/ilabhu#readme">Get started</a>
-          <a class="cta" href="https://github.com/eltonlaice/ilabhu">
-            <svg class="icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-              <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
-            </svg>
-            <span>View on GitHub</span>
-          </a>
+        <div class="hero-text">
+          <p class="eyebrow">
+            <span class="dot"></span>
+            Open source · Apache 2.0 · v0.1.1
+          </p>
+          <h1>Practice the full certification exam, on infrastructure you control.</h1>
+          <p class="lede">
+            ilabhu provisions a full exam environment for cloud certifications (CKA, CKAD, CKS, RHCSA) in
+            your own AWS, GCP, Azure or DigitalOcean account — or on Linux servers you already operate.
+            Multi-domain, time-bounded, scored. No shared sandbox, no subscription.
+          </p>
+          <div class="cta-row">
+            <a class="cta primary" href="https://github.com/eltonlaice/ilabhu#readme">
+              Get started
+              <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M5 12h14M13 5l7 7-7 7"/>
+              </svg>
+            </a>
+            <a class="cta" href="https://github.com/eltonlaice/ilabhu">
+              <svg class="icon" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+              </svg>
+              <span>Star on GitHub</span>
+            </a>
+          </div>
+          <p class="hero-meta">
+            5 cloud providers · 3 validator kinds · multi-arch images on
+            <a href="https://github.com/eltonlaice/ilabhu/pkgs/container/ilabhud">GHCR</a>
+          </p>
+        </div>
+
+        <div class="hero-visual" aria-hidden="true">
+          <div class="terminal">
+            <div class="terminal-bar">
+              <span class="dot red"></span>
+              <span class="dot amber"></span>
+              <span class="dot green"></span>
+              <span class="terminal-title">~/ilabhu</span>
+            </div>
+            <pre><code><span class="prompt">$</span> ILABHU_IMAGE_TAG=v0.1.1 docker compose \
+    -f deploy/docker-compose.yml up --pull always
+<span class="dim">[+] Running 2/2</span>
+<span class="dim"> ✔ Container ilabhud      Healthy</span>
+<span class="dim"> ✔ Container ilabhu-web   Started</span>
+
+<span class="prompt">$</span> curl -sX POST localhost:8080/v1/sessions \
+  -d '{"exam_id":"cka/warmup","provider":"digitalocean",
+       "digitalocean":{"token":"dop_v1_…"}}'
+<span class="dim">{"id":"3e1f…","status":"provisioning","provider":"digitalocean"}</span></code></pre>
+          </div>
         </div>
       </section>
 
-      <section class="pillars container">
-        <article>
-          <h3>BYO cloud or hosts</h3>
-          <p>
-            Run on AWS, GCP, Azure or DigitalOcean via short-lived assumed credentials, or hand
-            ilabhu a list of Linux servers you already operate. Resources you own, billing you
-            control, lifecycle you decide.
+      <section class="container providers" id="providers">
+        <header class="section-head">
+          <p class="eyebrow">Run anywhere</p>
+          <h2>Five ways to provision the exam environment</h2>
+          <p class="muted">
+            Each adapter is a Terraform module (for the four clouds) or an SSH-driven setup script
+            (BYO-hosts). The user picks one when they start a session; ilabhu only holds the
+            credentials in memory long enough to drive Terraform.
           </p>
-        </article>
-        <article>
-          <h3>Exam-shaped</h3>
-          <p>
-            Each exam mirrors the real certification: weighted domains, ~15-20 tasks, time-bounded,
-            scored against a passing threshold. Not a stack of disconnected micro-labs.
+        </header>
+        <div class="provider-grid">
+          <article class="provider-card">
+            <header>
+              <span class="provider-name">AWS</span>
+              <span class="provider-cost">~$0.05 / 2h</span>
+            </header>
+            <p>EC2 in the user's account; <code>sts:AssumeRole</code> with an external id. No long-lived keys ever stored.</p>
+            <code class="provider-auth">aws_role_arn + external_id</code>
+          </article>
+          <article class="provider-card">
+            <header>
+              <span class="provider-name">DigitalOcean</span>
+              <span class="provider-cost">~$0.04 / 2h</span>
+            </header>
+            <p>The cheapest cloud and the friendliest console. A Personal Access Token is all you paste.</p>
+            <code class="provider-auth">do_token</code>
+          </article>
+          <article class="provider-card">
+            <header>
+              <span class="provider-name">Google Cloud</span>
+              <span class="provider-cost">~$0.04 / 2h</span>
+            </header>
+            <p>Compute Engine VM via a Service Account key. <code>project_id</code> is parsed server-side from the JSON.</p>
+            <code class="provider-auth">service_account_key</code>
+          </article>
+          <article class="provider-card">
+            <header>
+              <span class="provider-name">Azure</span>
+              <span class="provider-cost">~$0.08 / 2h</span>
+            </header>
+            <p>Linux VM via a Service Principal with client secret. Four ARM_* env vars under the hood.</p>
+            <code class="provider-auth">tenant + sub + client_id + secret</code>
+          </article>
+          <article class="provider-card highlight">
+            <header>
+              <span class="provider-name">Your Linux hosts</span>
+              <span class="provider-cost">$0</span>
+            </header>
+            <p>A homelab box, a Hetzner droplet, a corp VM. ilabhu SSHes in and runs the exam's setup script. The only $0/session option.</p>
+            <code class="provider-auth">ssh_private_key + hosts[]</code>
+          </article>
+        </div>
+        <p class="section-foot">
+          See <a href="https://github.com/eltonlaice/ilabhu/blob/main/docs/cost-comparison.md">cost-comparison.md</a> for the full table and decision tree.
+        </p>
+      </section>
+
+      <section class="container quickstart">
+        <header class="section-head">
+          <p class="eyebrow">Quickstart</p>
+          <h2>Up in under a minute</h2>
+          <p class="muted">
+            Three commands from a fresh clone to a running web app and API.
           </p>
-        </article>
-        <article>
-          <h3>Self-hostable</h3>
-          <p>
-            Open source under Apache 2.0. Fork it, run it on your own machine, contribute exams.
-            One Go binary plus a Next.js frontend.
-          </p>
-        </article>
+        </header>
+        <ol class="steps">
+          <li>
+            <span class="step-num">1</span>
+            <div>
+              <h3>Clone</h3>
+              <pre><code>git clone https://github.com/eltonlaice/ilabhu
+cd ilabhu</code></pre>
+            </div>
+          </li>
+          <li>
+            <span class="step-num">2</span>
+            <div>
+              <h3>Bring it up</h3>
+              <pre><code>ILABHU_IMAGE_TAG=v0.1.1 docker compose \
+  -f deploy/docker-compose.yml up --pull always</code></pre>
+              <p class="muted">Or build from source: <code>docker compose -f deploy/docker-compose.yml up --build</code></p>
+            </div>
+          </li>
+          <li>
+            <span class="step-num">3</span>
+            <div>
+              <h3>Open</h3>
+              <pre><code><a href="http://localhost:3000">http://localhost:3000</a></code></pre>
+              <p class="muted">Pick the CKA warmup exam, choose a provider, paste credentials, click Start.</p>
+            </div>
+          </li>
+        </ol>
       </section>
 
       <section class="container">
@@ -250,8 +354,83 @@ tasks:
         expect_equals: <span class="s">"Running"</span></code></pre>
       </section>
 
+      <section class="container compare">
+        <header class="section-head">
+          <p class="eyebrow">How it compares</p>
+          <h2>Other paths for CKA prep</h2>
+          <p class="muted">
+            ilabhu is not the only option. Honest comparison against the alternatives most people end up
+            picking between.
+          </p>
+        </header>
+        <div class="compare-table-wrap">
+          <table class="compare-table">
+            <thead>
+              <tr>
+                <th></th>
+                <th>ilabhu</th>
+                <th>Killercoda</th>
+                <th>KodeKloud</th>
+                <th>Self-study + own VM</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">Open source</th>
+                <td class="yes">Apache 2.0</td>
+                <td class="no">Proprietary</td>
+                <td class="no">Proprietary</td>
+                <td class="yes">N/A</td>
+              </tr>
+              <tr>
+                <th scope="row">Runs in your account</th>
+                <td class="yes">BYO cloud or hosts</td>
+                <td class="no">Shared sandbox</td>
+                <td class="no">Shared sandbox</td>
+                <td class="yes">By definition</td>
+              </tr>
+              <tr>
+                <th scope="row">Recurring cost</th>
+                <td class="yes">$0 (BYO-hosts) or pay-as-you-go</td>
+                <td class="part">Free + paid tier</td>
+                <td class="no">~$25/month</td>
+                <td class="yes">$0</td>
+              </tr>
+              <tr>
+                <th scope="row">Exam-shaped sessions</th>
+                <td class="yes">Weighted domains, scored, timed</td>
+                <td class="part">Killer Shell exam, others ad-hoc</td>
+                <td class="part">Practice tests, some scored</td>
+                <td class="no">You build the structure</td>
+              </tr>
+              <tr>
+                <th scope="row">Authored content</th>
+                <td class="part">Warmup today; CKA full on the roadmap</td>
+                <td class="yes">CKA / CKAD / CKS catalog</td>
+                <td class="yes">Many certifications</td>
+                <td class="no">N/A</td>
+              </tr>
+              <tr>
+                <th scope="row">Validations run by</th>
+                <td>kubectl + shell + http checks defined in YAML</td>
+                <td>Scenario engine</td>
+                <td>Scenario engine</td>
+                <td>You eyeball it</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="section-foot">
+          ilabhu makes sense when you want the <em>environment shape</em> of the real exam in
+          <em>your</em> infra. Use it alongside an authored course if you also need content depth.
+        </p>
+      </section>
+
       <section class="container">
-        <h2>Status</h2>
+        <header class="section-head">
+          <p class="eyebrow">Roadmap</p>
+          <h2>Status</h2>
+        </header>
         <table class="status">
           <tbody>
             <tr><td>Manifest schema (multi-provider) + JSON Schema</td><td class="ok">shipped</td></tr>
@@ -269,14 +448,6 @@ tasks:
             <tr><td>Time-limit timer + weighted scoring UI</td><td class="todo">planned</td></tr>
           </tbody>
         </table>
-      </section>
-
-      <section class="container final-cta">
-        <h2>Try it locally</h2>
-        <pre><code>git clone https://github.com/eltonlaice/ilabhu
-cd ilabhu/control-plane &amp;&amp; go run ./cmd/ilabhud -addr :8080 -exams-dir ../exams &amp;
-cd ../web &amp;&amp; npm install &amp;&amp; npm run dev</code></pre>
-        <p class="muted">Then open <code>http://localhost:3000</code>.</p>
       </section>
 
       <section class="container faq" id="faq">
@@ -340,12 +511,48 @@ cd ../web &amp;&amp; npm install &amp;&amp; npm run dev</code></pre>
     </main>
 
     <footer>
-      <div class="container">
-        <p>
-          <a href="https://github.com/eltonlaice/ilabhu">github.com/eltonlaice/ilabhu</a>
-          · Apache 2.0
-          · Built by <a href="https://github.com/eltonlaice">@eltonlaice</a>
-        </p>
+      <div class="container footer-grid">
+        <div class="footer-brand">
+          <a href="/" class="brand">ilabhu</a>
+          <p class="muted">
+            Open-source certification exam simulator.<br />
+            Runs on infrastructure you control.
+          </p>
+          <p class="muted small">
+            Apache 2.0 · v0.1.1 · Built by
+            <a href="https://github.com/eltonlaice">@eltonlaice</a>
+          </p>
+        </div>
+        <div>
+          <h4>Docs</h4>
+          <ul>
+            <li><a href="https://github.com/eltonlaice/ilabhu/blob/main/README.md">README</a></li>
+            <li><a href="https://github.com/eltonlaice/ilabhu/blob/main/docs/architecture.md">Architecture</a></li>
+            <li><a href="https://github.com/eltonlaice/ilabhu/blob/main/docs/exam-schema.md">Exam schema</a></li>
+            <li><a href="https://github.com/eltonlaice/ilabhu/blob/main/docs/byo-cloud-setup.md">Provider setup</a></li>
+            <li><a href="https://github.com/eltonlaice/ilabhu/blob/main/docs/cost-comparison.md">Cost comparison</a></li>
+            <li><a href="https://github.com/eltonlaice/ilabhu/blob/main/docs/troubleshooting.md">Troubleshooting</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>Contribute</h4>
+          <ul>
+            <li><a href="https://github.com/eltonlaice/ilabhu/blob/main/docs/authoring-an-exam.md">Author an exam</a></li>
+            <li><a href="https://github.com/eltonlaice/ilabhu/blob/main/docs/adding-a-provider.md">Add a provider</a></li>
+            <li><a href="https://github.com/eltonlaice/ilabhu/blob/main/CONTRIBUTING.md">CONTRIBUTING</a></li>
+            <li><a href="https://github.com/eltonlaice/ilabhu/issues">Issues</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>Project</h4>
+          <ul>
+            <li><a href="https://github.com/eltonlaice/ilabhu">Source</a></li>
+            <li><a href="https://github.com/eltonlaice/ilabhu/releases">Releases</a></li>
+            <li><a href="https://github.com/eltonlaice/ilabhu/pkgs/container/ilabhud">Images (GHCR)</a></li>
+            <li><a href="https://github.com/eltonlaice/ilabhu/blob/main/CHANGELOG.md">Changelog</a></li>
+            <li><a href="https://github.com/eltonlaice/ilabhu/blob/main/SECURITY.md">Security policy</a></li>
+          </ul>
+        </div>
       </div>
     </footer>
   </body>
