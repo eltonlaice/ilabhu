@@ -76,7 +76,7 @@ For the IAM role + external-id setup, see [docs/byo-cloud-setup.md](docs/byo-clo
 - [ ] Full CKA content (~17 tasks across all domains)
 - [ ] CKAD, CKS, RHCSA exam packs
 - [ ] Time-limit timer + weighted scoring UI
-- [ ] `docker compose` self-host bundle
+- [x] `docker compose` self-host bundle (see [deploy/README.md](deploy/README.md))
 - [ ] Workload Identity Federation for GCP / Azure (currently SA key / SP secret)
 
 ## License

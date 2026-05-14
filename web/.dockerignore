@@ -1,0 +1,9 @@
+node_modules/
+.next/
+out/
+.turbo/
+.git
+.github
+npm-debug.log*
+.env*
+!.env.example
