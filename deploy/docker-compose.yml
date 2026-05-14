@@ -1,0 +1,54 @@
+# ilabhu self-host bundle.
+#
+# Usage from the repo root:
+#
+#     docker compose -f deploy/docker-compose.yml up --build
+#     # then open http://localhost:3000
+#
+# What this brings up:
+# - ilabhud (control plane) on :8080, with /exams mounted read-only and
+#   /var/lib/ilabhu persisted in the named volume `ilabhu-state`.
+# - web (Next.js 16 standalone) on :3000, proxying /api/* to ilabhud.
+
+services:
+  ilabhud:
+    build:
+      context: ../control-plane
+    image: ilabhu/ilabhud:dev
+    container_name: ilabhud
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ../exams:/exams:ro
+      - ilabhu-state:/var/lib/ilabhu
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          (curl -fsS http://127.0.0.1:8080/healthz ||
+           wget -q -O - http://127.0.0.1:8080/healthz) >/dev/null
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  web:
+    build:
+      context: ../web
+    image: ilabhu/web:dev
+    container_name: ilabhu-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # Next.js rewrites /api/* to this base from within the container
+      # network. The browser still hits localhost:3000 — only the SSR
+      # fetches and the rewrite target need to resolve `ilabhud`.
+      ILABHU_API_BASE: http://ilabhud:8080
+    depends_on:
+      ilabhud:
+        condition: service_healthy
+
+volumes:
+  ilabhu-state:

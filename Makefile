@@ -6,7 +6,9 @@
 # `help` target parses and renders.
 
 .DEFAULT_GOAL := help
-.PHONY: help build test cover lint vet fmt run web-install web-dev web-build web-lint smoke check clean
+.PHONY: help build test cover lint vet fmt run web-install web-dev web-build web-lint smoke check clean compose-up compose-down compose-build
+
+COMPOSE := docker compose -f deploy/docker-compose.yml
 
 # ----- Backend (control-plane) -----
 
@@ -61,6 +63,17 @@ smoke: ## Start ilabhud, hit /healthz and /v1/exams, then stop
 
 clean: ## Remove build artefacts
 	rm -rf control-plane/bin web/.next web/out
+
+# ----- Self-host (Docker Compose) -----
+
+compose-build: ## Build ilabhud + web images
+	$(COMPOSE) build
+
+compose-up: ## Bring the self-host bundle up (port 3000 / 8080)
+	$(COMPOSE) up --build
+
+compose-down: ## Tear the self-host bundle down (keeps the state volume)
+	$(COMPOSE) down
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*?## "} \
