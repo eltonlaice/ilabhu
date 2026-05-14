@@ -224,6 +224,10 @@
         "url": { "type": "string", "format": "uri" },
         "expect_equals": { "type": "string" },
         "expect_contains": { "type": "string" },
+        "expect_regex": {
+          "type": "string",
+          "description": "Go regexp (RE2 syntax). Anchor with ^...$ for an exact match; leave unanchored for substring matching. Invalid patterns fail the validation at run time."
+        },
         "expect_exit_code": { "type": "integer" },
         "expect_status": { "type": "integer" },
         "expect_body_contains": { "type": "string" }

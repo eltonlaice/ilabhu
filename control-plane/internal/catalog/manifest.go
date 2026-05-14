@@ -89,6 +89,7 @@ type Validation struct {
 	URL            string   `yaml:"url,omitempty"`
 	ExpectEquals   *string  `yaml:"expect_equals,omitempty"`
 	ExpectContains *string  `yaml:"expect_contains,omitempty"`
+	ExpectRegex    *string  `yaml:"expect_regex,omitempty"`
 	ExpectExitCode *int     `yaml:"expect_exit_code,omitempty"`
 	ExpectStatus   *int     `yaml:"expect_status,omitempty"`
 	ExpectBodyHas  *string  `yaml:"expect_body_contains,omitempty"`

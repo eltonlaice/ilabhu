@@ -123,8 +123,10 @@ tasks:
 
 | `kind` | Inputs | Pass condition |
 |---|---|---|
-| `kubectl` | `args` (list), `expect_equals` \| `expect_contains` \| `expect_exit_code` | stdout / exit code matches |
-| `shell` | `script` (piped to `/bin/sh` over SSH on the access host), `expect_exit_code` (default `0`), `expect_equals` \| `expect_contains` against the trimmed combined stdout+stderr | exit code matches expectation and any string assertion passes |
-| `http` | `url` (with `{{public_ip}}` substitution), `expect_status` (default `200`), `expect_body_contains` | status matches expectation and (if set) body contains the substring |
+| `kubectl` | `args` (list), `expect_equals` \| `expect_contains` \| `expect_regex` \| `expect_exit_code` | stdout / exit code matches |
+| `shell` | `script` (piped to `/bin/sh` over SSH on the access host), `expect_exit_code` (default `0`), `expect_equals` \| `expect_contains` \| `expect_regex` against the trimmed combined stdout+stderr | exit code matches expectation and any string assertion passes |
+| `http` | `url` (with `{{public_ip}}` substitution), `expect_status` (default `200`), `expect_body_contains` \| `expect_regex` (matched against the response body) | status matches expectation and (if set) body assertions pass |
+
+`expect_regex` accepts a Go [`regexp`](https://pkg.go.dev/regexp/syntax) pattern (RE2 syntax — no backreferences, no lookaround). Anchor your pattern (`^...$`) if you want an exact match; leave it unanchored to match a substring. Invalid patterns fail the validation with a clear message at run time.
 
 Validations within a task are evaluated in order; all must pass for the task to be marked complete.

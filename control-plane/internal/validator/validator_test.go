@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/eltonlaice/ilabhu/control-plane/internal/catalog"
@@ -115,6 +116,62 @@ func TestRun_ExpectContainsPasses(t *testing.T) {
 	results, _ := Run(context.Background(), task, kubeAccess([]byte("k")))
 	if !results[0].Passed {
 		t.Errorf("expect_contains should match: %+v", results)
+	}
+}
+
+func TestRun_Kubectl_ExpectRegexPasses(t *testing.T) {
+	stubKubectlOnPATH(t)
+	// The kind of output kubectl produces for an auto-generated pod name —
+	// expect_equals can't pin this down because the suffix is random.
+	t.Setenv("FAKE_OUT", "nginx-deployment-7c9b5f8d4-x2k9m")
+	t.Setenv("FAKE_EXIT", "0")
+
+	task := catalog.Task{
+		Validations: []catalog.Validation{
+			{Kind: "kubectl", ExpectRegex: ptrString(`^nginx-deployment-[a-z0-9]+-[a-z0-9]{5}$`)},
+		},
+	}
+	results, _ := Run(context.Background(), task, kubeAccess([]byte("k")))
+	if !results[0].Passed {
+		t.Errorf("expect_regex should match auto-generated pod name; got %q", results[0].Message)
+	}
+}
+
+func TestRun_Kubectl_ExpectRegexFailsOnMismatch(t *testing.T) {
+	stubKubectlOnPATH(t)
+	t.Setenv("FAKE_OUT", "ContainerCreating")
+	t.Setenv("FAKE_EXIT", "0")
+
+	task := catalog.Task{
+		Validations: []catalog.Validation{
+			{Kind: "kubectl", ExpectRegex: ptrString(`^Running$`)},
+		},
+	}
+	results, _ := Run(context.Background(), task, kubeAccess([]byte("k")))
+	if results[0].Passed {
+		t.Error("expect_regex with ^Running$ should not match ContainerCreating")
+	}
+	if results[0].Message == "" {
+		t.Error("failure should carry a message")
+	}
+}
+
+func TestRun_Kubectl_ExpectRegexInvalidPatternFails(t *testing.T) {
+	stubKubectlOnPATH(t)
+	t.Setenv("FAKE_OUT", "anything")
+	t.Setenv("FAKE_EXIT", "0")
+
+	task := catalog.Task{
+		Validations: []catalog.Validation{
+			{Kind: "kubectl", ExpectRegex: ptrString(`[unclosed-char-class`)},
+		},
+	}
+	results, _ := Run(context.Background(), task, kubeAccess([]byte("k")))
+	if results[0].Passed {
+		t.Error("an invalid regex should fail the validation, not silently pass")
+	}
+	if !strings.Contains(results[0].Message, "invalid expect_regex") {
+		t.Errorf("error should mention invalid expect_regex; got %q", results[0].Message)
 	}
 }
 
