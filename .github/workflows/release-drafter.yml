@@ -1,0 +1,37 @@
+name: Release drafter
+
+# Drafts the next release's notes as PRs land on main. The PR labels
+# (feat / fix / docs / ...) are applied automatically from conventional-
+# commit titles via the autolabeler config in .github/release-drafter.yml.
+#
+# The drafted release stays in 'Draft' until a maintainer flips it to
+# 'Latest' and publishes; the actual tag is still cut by hand with
+# 'gh release create' so we keep an explicit checkpoint per release.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+# Opt actions into the Node.js 24 runtime ahead of the June 2026 cutover.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+permissions:
+  contents: read
+
+jobs:
+  draft:
+    name: Update draft release
+    runs-on: ubuntu-latest
+    permissions:
+      # Required by release-drafter to write the draft and to autolabel PRs.
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: release-drafter/release-drafter@v6
+        with:
+          config-name: release-drafter.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
