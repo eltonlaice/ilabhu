@@ -1,0 +1,115 @@
+name-template: "v$RESOLVED_VERSION"
+tag-template: "v$RESOLVED_VERSION"
+
+categories:
+  - title: ":rocket: Added"
+    labels:
+      - "feat"
+      - "feature"
+      - "enhancement"
+  - title: ":wrench: Changed"
+    labels:
+      - "refactor"
+      - "change"
+      - "perf"
+  - title: ":bug: Fixed"
+    labels:
+      - "fix"
+      - "bug"
+  - title: ":closed_lock_with_key: Security"
+    labels:
+      - "security"
+  - title: ":books: Documentation"
+    labels:
+      - "docs"
+      - "documentation"
+  - title: ":hammer_and_wrench: CI / chores"
+    labels:
+      - "ci"
+      - "chore"
+      - "build"
+      - "dependencies"
+      - "test"
+
+# Map Conventional Commit prefixes in PR titles to labels so contributors
+# don't have to add labels manually.
+autolabeler:
+  - label: "feat"
+    title:
+      - '/^feat(\(.+\))?:/i'
+  - label: "fix"
+    title:
+      - '/^fix(\(.+\))?:/i'
+  - label: "docs"
+    title:
+      - '/^docs(\(.+\))?:/i'
+  - label: "refactor"
+    title:
+      - '/^refactor(\(.+\))?:/i'
+  - label: "perf"
+    title:
+      - '/^perf(\(.+\))?:/i'
+  - label: "test"
+    title:
+      - '/^test(\(.+\))?:/i'
+  - label: "ci"
+    title:
+      - '/^ci(\(.+\))?:/i'
+  - label: "chore"
+    title:
+      - '/^chore(\(.+\))?:/i'
+  - label: "build"
+    title:
+      - '/^build(\(.+\))?:/i'
+  - label: "security"
+    title:
+      - '/^security(\(.+\))?:/i'
+
+# Patch / minor / major resolution from conventional commit prefixes.
+version-resolver:
+  major:
+    labels:
+      - "breaking"
+      - "major"
+  minor:
+    labels:
+      - "feat"
+      - "feature"
+      - "enhancement"
+  patch:
+    labels:
+      - "fix"
+      - "bug"
+      - "docs"
+      - "refactor"
+      - "perf"
+      - "test"
+      - "ci"
+      - "chore"
+      - "build"
+      - "security"
+      - "dependencies"
+  default: patch
+
+change-template: "- $TITLE (#$NUMBER) @$AUTHOR"
+change-title-escapes: '\<*_&'
+
+template: |
+  ## What's in this release
+
+  $CHANGES
+
+  ---
+
+  **Full diff:** https://github.com/$OWNER/$REPOSITORY/compare/$PREVIOUS_TAG...v$RESOLVED_VERSION
+
+  **Container images** (multi-arch, with provenance + SBOM):
+  - `ghcr.io/eltonlaice/ilabhud:v$RESOLVED_VERSION`
+  - `ghcr.io/eltonlaice/ilabhu-web:v$RESOLVED_VERSION`
+
+  **One-line self-host:**
+
+  ```sh
+  ILABHU_IMAGE_TAG=v$RESOLVED_VERSION docker compose \
+    -f deploy/docker-compose.yml up --no-build --pull always
+  ```
