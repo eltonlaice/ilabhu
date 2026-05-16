@@ -6,7 +6,7 @@
 # `help` target parses and renders.
 
 .DEFAULT_GOAL := help
-.PHONY: help build test cover lint vet fmt run web-install web-dev web-build web-lint smoke check clean compose-up compose-down compose-build
+.PHONY: help build test cover lint vet fmt run web-install web-dev web-build web-lint smoke check clean compose-up compose-down compose-build compose-smoke
 
 COMPOSE := docker compose -f deploy/docker-compose.yml
 
@@ -74,6 +74,22 @@ compose-up: ## Bring the self-host bundle up (port 3000 / 8080)
 
 compose-down: ## Tear the self-host bundle down (keeps the state volume)
 	$(COMPOSE) down
+
+compose-smoke: ## Bring the bundle up, hit the web app and the API, tear down
+	@echo "==> docker compose up"
+	@$(COMPOSE) up --build -d
+	@echo "==> waiting for ilabhud /healthz"
+	@for i in $$(seq 1 60); do \
+	  curl -fsS http://127.0.0.1:8080/healthz >/dev/null && break || sleep 1; \
+	done
+	@echo "==> /v1/exams" && curl -fsS http://127.0.0.1:8080/v1/exams | head -c 300; echo
+	@echo "==> waiting for web on :3000"
+	@for i in $$(seq 1 60); do \
+	  curl -fsS http://127.0.0.1:3000/ -o /dev/null && break || sleep 1; \
+	done
+	@echo "==> landing carries the warmup tile?"
+	@curl -fsS http://127.0.0.1:3000/ | grep -q "CKA — Warmup" && echo "yes"
+	@$(COMPOSE) down -v
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*?## "} \

@@ -1,0 +1,118 @@
+name: Compose smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "control-plane/**"
+      - "web/**"
+      - "exams/**"
+      - "deploy/**"
+      - ".github/workflows/compose-smoke.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "control-plane/**"
+      - "web/**"
+      - "exams/**"
+      - "deploy/**"
+      - ".github/workflows/compose-smoke.yml"
+  workflow_dispatch:
+
+# Opt actions into the Node.js 24 runtime ahead of the June 2026 cutover.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+permissions:
+  contents: read
+
+jobs:
+  compose-smoke:
+    name: Compose smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Bring the bundle up
+        run: |
+          docker compose -f deploy/docker-compose.yml up --build -d
+          docker compose -f deploy/docker-compose.yml ps
+
+      - name: Wait for ilabhud /healthz
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:8080/healthz >/dev/null; then
+              echo "ilabhud healthy after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::ilabhud did not become healthy in 60s"
+          exit 1
+
+      - name: Assert /healthz body
+        run: |
+          body=$(curl -fsS http://127.0.0.1:8080/healthz)
+          echo "$body"
+          echo "$body" | grep -q '"status":"ok"' || {
+            echo "::error::unexpected /healthz body"
+            exit 1
+          }
+
+      - name: Assert catalog loads ≥ 1 exam
+        run: |
+          body=$(curl -fsS http://127.0.0.1:8080/v1/exams)
+          echo "$body" | jq -e 'length >= 1' >/dev/null || {
+            echo "::error::catalog returned 0 exams"
+            exit 1
+          }
+          echo "catalog returned $(echo "$body" | jq length) exam(s)"
+
+      - name: Assert /v1/exams/cka/warmup deserialises
+        run: |
+          body=$(curl -fsS http://127.0.0.1:8080/v1/exams/cka/warmup)
+          echo "$body" | jq -e '
+            .id == "cka/warmup" and
+            (.providers | length) == 5 and
+            (.tasks | length) >= 1
+          ' >/dev/null || {
+            echo "::error::warmup manifest has unexpected shape"
+            echo "$body"
+            exit 1
+          }
+
+      - name: Wait for the web app
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:3000/ -o /dev/null; then
+              echo "web ready after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::web did not respond in 60s"
+          exit 1
+
+      - name: Assert / renders the warmup tile
+        run: |
+          html=$(curl -fsS http://127.0.0.1:3000/)
+          echo "$html" | grep -q "CKA — Warmup" || {
+            echo "::error::landing did not render the warmup tile"
+            exit 1
+          }
+
+      - name: Logs on failure
+        if: failure()
+        run: |
+          echo '--- ilabhud ---'
+          docker compose -f deploy/docker-compose.yml logs ilabhud || true
+          echo '--- web ---'
+          docker compose -f deploy/docker-compose.yml logs web || true
+
+      - name: Tear down
+        if: always()
+        run: docker compose -f deploy/docker-compose.yml down -v
