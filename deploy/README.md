@@ -40,7 +40,7 @@ The control-plane image bundles `terraform` (pinned via the `TERRAFORM_VERSION` 
 - **`make run`** — local dev: `ilabhud` runs against the source tree directly, no rebuild between edits.
 - **`docker compose up`** — what users self-host with: production-shaped image, isolated, restartable.
 
-CI's smoke job exercises the `make run` path; we have not yet wired a compose-up smoke. It is on the roadmap.
+CI exercises both paths: `Smoke (catalog load + healthz)` covers `make run`, and `Compose smoke` covers `docker compose up --build` end-to-end against the same in-tree exams catalog. Locally, you can reproduce the compose path with `make compose-smoke`.
 
 ## Use a published image instead of building locally
 
