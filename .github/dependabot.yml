@@ -17,3 +17,49 @@ updates:
     labels:
       - dependencies
       - github-actions
+
+  # Docker base images in both Dockerfiles. Catches CVEs against
+  # golang:1.26-bookworm, debian:bookworm-slim, and node:22-bookworm-slim,
+  # plus eventual major releases when they're tagged.
+  - package-ecosystem: docker
+    directory: /control-plane
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    labels:
+      - dependencies
+      - docker
+
+  - package-ecosystem: docker
+    directory: /web
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    labels:
+      - dependencies
+      - docker
+
+  # Frontend dependencies. The lock file is the source of truth so we use
+  # 'npm' rather than 'npm_and_yarn'.
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - js
+    groups:
+      next-and-react:
+        patterns:
+          - "next"
+          - "react"
+          - "react-dom"
+          - "@types/react*"
+      eslint:
+        patterns:
+          - "eslint*"
+      tailwind:
+        patterns:
+          - "tailwindcss"
+          - "@tailwindcss/*"
