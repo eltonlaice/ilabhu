@@ -65,12 +65,16 @@ The release-drafter draft is automatically reset for the next version after this
 Pushing `v$X.$Y.$Z` triggers [`.github/workflows/release-images.yml`](../.github/workflows/release-images.yml):
 
 1. Builds `control-plane/Dockerfile` and `web/Dockerfile` for `linux/amd64` and `linux/arm64` via Buildx + QEMU.
-2. Pushes to GHCR with the tag plus semver aliases (`v0.1.2`, `0.1.2`, `0.1`, and `latest` on non-prerelease tags).
-3. Generates SBOM + provenance attestations via `docker/build-push-action` and pushes them to the registry alongside the images.
-4. Calls `actions/attest-build-provenance` so users can verify with:
+2. Pushes to **both registries** with the tag plus semver aliases (`v0.1.2`, `0.1.2`, `0.1`, and `latest` on non-prerelease tags):
+   - `ghcr.io/eltonlaice/{ilabhud,ilabhu-web}` — always (uses `GITHUB_TOKEN`, no setup).
+   - `docker.io/eltonlaicedev/{ilabhud,ilabhu-web}` — when the `DOCKERHUB_USERNAME` repo variable + `DOCKERHUB_TOKEN` secret are present. The two registries carry identical digests.
+3. Generates SBOM + provenance attestations via `docker/build-push-action` and pushes them to both registries.
+4. Calls `actions/attest-build-provenance` once per registry so users can verify against either:
    ```sh
    gh attestation verify oci://ghcr.io/eltonlaice/ilabhud:v$X.$Y.$Z --owner eltonlaice
+   gh attestation verify oci://docker.io/eltonlaicedev/ilabhud:v$X.$Y.$Z --owner eltonlaice
    ```
+5. Calls `peter-evans/dockerhub-description` to sync the GitHub README to the Docker Hub repo description so the listing page is not blank.
 
 Total wall time is ~5–7 minutes per architecture, sequential. The two images run in parallel via the matrix.
 
@@ -91,13 +95,19 @@ If the bug requires source changes that v$X.$Y.$Z does not include, cut a patch 
 Anyone, including users:
 
 ```sh
-# Verify the image's provenance
+# Verify the image's provenance (either registry — same digests)
 gh attestation verify oci://ghcr.io/eltonlaice/ilabhud:v$X.$Y.$Z --owner eltonlaice
+gh attestation verify oci://docker.io/eltonlaicedev/ilabhud:v$X.$Y.$Z --owner eltonlaice
 
 # Inspect the multi-arch manifest
 docker manifest inspect ghcr.io/eltonlaice/ilabhud:v$X.$Y.$Z
+docker manifest inspect docker.io/eltonlaicedev/ilabhud:v$X.$Y.$Z
 
-# Run the bundle with that exact version
+# Pull from Docker Hub (no GitHub account needed for visibility)
+docker pull eltonlaicedev/ilabhud:v$X.$Y.$Z
+docker pull eltonlaicedev/ilabhu-web:v$X.$Y.$Z
+
+# Run the bundle with that exact version (defaults to GHCR)
 ILABHU_IMAGE_TAG=v$X.$Y.$Z docker compose \
   -f deploy/docker-compose.yml up --no-build --pull always
 ```

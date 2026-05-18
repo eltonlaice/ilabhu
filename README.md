@@ -13,6 +13,8 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/eltonlaice/ilabhu/control-plane)](https://goreportcard.com/report/github.com/eltonlaice/ilabhu/control-plane)
 [![Go Reference](https://pkg.go.dev/badge/github.com/eltonlaice/ilabhu/control-plane.svg)](https://pkg.go.dev/github.com/eltonlaice/ilabhu/control-plane)
 [![ilabhud image](https://ghcr-badge.egpl.dev/eltonlaice/ilabhud/latest_tag?label=ilabhud&trim=major&color=%23303030)](https://github.com/eltonlaice/ilabhu/pkgs/container/ilabhud)
+[![Docker Hub — ilabhud](https://img.shields.io/docker/pulls/eltonlaicedev/ilabhud?label=ilabhud&logo=docker)](https://hub.docker.com/r/eltonlaicedev/ilabhud)
+[![Docker Hub — ilabhu-web](https://img.shields.io/docker/pulls/eltonlaicedev/ilabhu-web?label=ilabhu-web&logo=docker)](https://hub.docker.com/r/eltonlaicedev/ilabhu-web)
 
 **Practice the full certification exam, on infrastructure you control.**
 

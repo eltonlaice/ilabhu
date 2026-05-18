@@ -49,20 +49,23 @@ Every release tag is published to two registries — pick whichever you prefer:
 | Registry | `ilabhud` | `ilabhu-web` |
 |---|---|---|
 | GHCR | <https://github.com/eltonlaice/ilabhu/pkgs/container/ilabhud> | <https://github.com/eltonlaice/ilabhu/pkgs/container/ilabhu-web> |
-| Docker Hub | <https://hub.docker.com/r/eltonlaice/ilabhud> | <https://hub.docker.com/r/eltonlaice/ilabhu-web> |
+| Docker Hub | <https://hub.docker.com/r/eltonlaicedev/ilabhud> | <https://hub.docker.com/r/eltonlaicedev/ilabhu-web> |
 
-The `deploy/docker-compose.yml` defaults to GHCR. To use Docker Hub, override the image lines or set `ILABHU_REGISTRY=docker.io/eltonlaice` in your shell before running compose.
+The `deploy/docker-compose.yml` defaults to GHCR. To use Docker Hub, override the image lines or set `ILABHU_REGISTRY=docker.io/eltonlaicedev` in your shell before running compose.
 
 ```sh
 ILABHU_IMAGE_TAG=v0.1.1 docker compose -f deploy/docker-compose.yml up \
   --no-build --pull always
 ```
 
-Available platforms: `linux/amd64`, `linux/arm64`. Both registries carry the same digests. Builds are produced with [build provenance](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestations-to-establish-provenance-for-builds) and an SBOM attached to each image; verify with:
+Available platforms: `linux/amd64`, `linux/arm64`. Both registries carry the same digests, so `gh attestation verify` against either coordinates works. Builds are produced with [build provenance](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestations-to-establish-provenance-for-builds) and an SBOM attached to each image:
 
 ```sh
-gh attestation verify oci://ghcr.io/eltonlaice/ilabhud:v0.1.1 \
-  --owner eltonlaice
+# Verify from GHCR
+gh attestation verify oci://ghcr.io/eltonlaice/ilabhud:v0.1.1 --owner eltonlaice
+
+# Or from Docker Hub
+gh attestation verify oci://docker.io/eltonlaicedev/ilabhud:v0.1.1 --owner eltonlaice
 ```
 
 ## Bumping pinned versions (local build)
