@@ -90,7 +90,7 @@ For the IAM role + external-id setup, see [docs/byo-cloud-setup.md](docs/byo-clo
 
 ## Releases
 
-See [CHANGELOG.md](./CHANGELOG.md) for what shipped in each release.
+See [CHANGELOG.md](./CHANGELOG.md) for what shipped in each release, and [docs/release-process.md](docs/release-process.md) for how releases are cut and published.
 
 ## License
 
