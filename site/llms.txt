@@ -37,6 +37,21 @@ When a user starts a session, the control plane (`ilabhud`, written in Go) picks
 - `docs/` — `architecture.md`, `exam-schema.md` (+ JSON Schema), `authoring-an-exam.md`, `byo-cloud-setup.md`, `troubleshooting.md`.
 - `site/` — this landing page, deployed to https://ilabhu.com/ via GitHub Pages.
 
+## Published images
+
+Every release tag is published multi-arch (`linux/amd64`, `linux/arm64`) to both registries with identical digests:
+
+- GHCR — `ghcr.io/eltonlaice/ilabhud` · `ghcr.io/eltonlaice/ilabhu-web`
+- Docker Hub — `eltonlaicedev/ilabhud` · `eltonlaicedev/ilabhu-web`
+
+Builds carry SBOM + build provenance attestations. Verify with `gh attestation verify oci://<image>:<tag> --owner eltonlaice` from either registry.
+
+One-line self-host:
+
+```sh
+ILABHU_IMAGE_TAG=v0.1.1 docker compose -f deploy/docker-compose.yml up --no-build --pull always
+```
+
 ## Key documents
 
 - [README](https://github.com/eltonlaice/ilabhu/blob/main/README.md)
