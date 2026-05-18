@@ -133,7 +133,7 @@ jobs:
         # Pushes the GitHub README to the corresponding Docker Hub repo so the
         # listing page isn't blank. Only the first image in the matrix needs
         # the full repo README; the other matches a small per-image blurb.
-        if: ${{ vars.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
+        if: ${{ vars.DOCKERHUB_USERNAME != '' }}
         uses: peter-evans/dockerhub-description@v5
         with:
           username: ${{ vars.DOCKERHUB_USERNAME }}
