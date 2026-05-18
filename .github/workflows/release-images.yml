@@ -64,11 +64,25 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Login to Docker Hub
+        # Conditional: enabled when the operator sets a DOCKERHUB_USERNAME
+        # repo variable. Without it the workflow still publishes to GHCR.
+        if: ${{ vars.DOCKERHUB_USERNAME != '' }}
+        uses: docker/login-action@v4
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Resolve image metadata
         id: meta
         uses: docker/metadata-action@v6
         with:
-          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image.name }}
+          # One target per registry. metadata-action handles blank lines, so
+          # an empty docker.io entry (when DOCKERHUB_USERNAME isn't set)
+          # collapses cleanly and only GHCR is targeted.
+          images: |
+            ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image.name }}
+            ${{ vars.DOCKERHUB_USERNAME != '' && format('docker.io/{0}/{1}', vars.DOCKERHUB_USERNAME, matrix.image.name) || '' }}
           # The tag the workflow is firing for (either pushed or dispatched);
           # 'latest' only on a real semver tag (not pre-release / dispatched
           # one-off).
@@ -100,9 +114,31 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.image.name }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image.name }}
 
-      - name: Attest provenance
+      - name: Attest provenance (GHCR)
         uses: actions/attest-build-provenance@v3
         with:
           subject-name: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image.name }}
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
+
+      - name: Attest provenance (Docker Hub)
+        if: ${{ vars.DOCKERHUB_USERNAME != '' }}
+        uses: actions/attest-build-provenance@v3
+        with:
+          subject-name: docker.io/${{ vars.DOCKERHUB_USERNAME }}/${{ matrix.image.name }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+      - name: Sync Docker Hub README
+        # Pushes the GitHub README to the corresponding Docker Hub repo so the
+        # listing page isn't blank. Only the first image in the matrix needs
+        # the full repo README; the other matches a small per-image blurb.
+        if: ${{ vars.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
+        uses: peter-evans/dockerhub-description@v5
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ vars.DOCKERHUB_USERNAME }}/${{ matrix.image.name }}
+          short-description: "ilabhu — ${{ matrix.image.name }} (open-source certification exam simulator). See https://github.com/${{ github.repository }}."
+          readme-filepath: ./README.md
+          enable-url-completion: true

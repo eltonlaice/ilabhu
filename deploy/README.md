@@ -44,22 +44,24 @@ CI exercises both paths: `Smoke (catalog load + healthz)` covers `make run`, and
 
 ## Use a published image instead of building locally
 
-Starting with v0.1.0, every release tag is published to GHCR:
+Every release tag is published to two registries — pick whichever you prefer:
 
-- <https://github.com/eltonlaice/ilabhu/pkgs/container/ilabhud>
-- <https://github.com/eltonlaice/ilabhu/pkgs/container/ilabhu-web>
+| Registry | `ilabhud` | `ilabhu-web` |
+|---|---|---|
+| GHCR | <https://github.com/eltonlaice/ilabhu/pkgs/container/ilabhud> | <https://github.com/eltonlaice/ilabhu/pkgs/container/ilabhu-web> |
+| Docker Hub | <https://hub.docker.com/r/eltonlaice/ilabhud> | <https://hub.docker.com/r/eltonlaice/ilabhu-web> |
 
-To run the bundle without building anything, pin the tag and skip the build step:
+The `deploy/docker-compose.yml` defaults to GHCR. To use Docker Hub, override the image lines or set `ILABHU_REGISTRY=docker.io/eltonlaice` in your shell before running compose.
 
 ```sh
-ILABHU_IMAGE_TAG=v0.1.0 docker compose -f deploy/docker-compose.yml up \
+ILABHU_IMAGE_TAG=v0.1.1 docker compose -f deploy/docker-compose.yml up \
   --no-build --pull always
 ```
 
-Available platforms: `linux/amd64`, `linux/arm64`. Builds are produced with [build provenance](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestations-to-establish-provenance-for-builds) and an SBOM attached to each image; verify with:
+Available platforms: `linux/amd64`, `linux/arm64`. Both registries carry the same digests. Builds are produced with [build provenance](https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestations-to-establish-provenance-for-builds) and an SBOM attached to each image; verify with:
 
 ```sh
-gh attestation verify oci://ghcr.io/eltonlaice/ilabhud:v0.1.0 \
+gh attestation verify oci://ghcr.io/eltonlaice/ilabhud:v0.1.1 \
   --owner eltonlaice
 ```
 
