@@ -6,7 +6,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+
+- **Docker Hub publishing alongside GHCR.** The release-images workflow now pushes the same multi-arch images to `docker.io/<DOCKERHUB_USERNAME>/{ilabhud,ilabhu-web}` when the `DOCKERHUB_USERNAME` repo variable and `DOCKERHUB_TOKEN` repo secret are set; without them the workflow still publishes to GHCR exactly as before. Provenance attestations are pushed to both registries, and `peter-evans/dockerhub-description` syncs the GitHub README to the Docker Hub repository description so the listing page isn't blank.
 
 ## [0.1.1] — 2026-05-15
 
