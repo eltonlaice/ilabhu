@@ -1,9 +1,18 @@
 # ilabhu
 
-[![CI](https://github.com/eltonlaice/ilabhu/actions/workflows/go.yml/badge.svg?branch=main)](https://github.com/eltonlaice/ilabhu/actions/workflows/go.yml)
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Go Reference](https://pkg.go.dev/badge/github.com/eltonlaice/ilabhu/control-plane.svg)](https://pkg.go.dev/github.com/eltonlaice/ilabhu/control-plane)
+[![Go](https://github.com/eltonlaice/ilabhu/actions/workflows/go.yml/badge.svg?branch=main)](https://github.com/eltonlaice/ilabhu/actions/workflows/go.yml)
+[![Web](https://github.com/eltonlaice/ilabhu/actions/workflows/web.yml/badge.svg?branch=main)](https://github.com/eltonlaice/ilabhu/actions/workflows/web.yml)
+[![Smoke](https://github.com/eltonlaice/ilabhu/actions/workflows/smoke.yml/badge.svg?branch=main)](https://github.com/eltonlaice/ilabhu/actions/workflows/smoke.yml)
+[![Compose smoke](https://github.com/eltonlaice/ilabhu/actions/workflows/compose-smoke.yml/badge.svg?branch=main)](https://github.com/eltonlaice/ilabhu/actions/workflows/compose-smoke.yml)
+[![CodeQL](https://github.com/eltonlaice/ilabhu/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/eltonlaice/ilabhu/actions/workflows/codeql.yml)
+[![govulncheck](https://github.com/eltonlaice/ilabhu/actions/workflows/govulncheck.yml/badge.svg?branch=main)](https://github.com/eltonlaice/ilabhu/actions/workflows/govulncheck.yml)
+[![Site lint](https://github.com/eltonlaice/ilabhu/actions/workflows/site-lint.yml/badge.svg?branch=main)](https://github.com/eltonlaice/ilabhu/actions/workflows/site-lint.yml)
+
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Latest release](https://img.shields.io/github/v/release/eltonlaice/ilabhu?sort=semver&display_name=tag)](https://github.com/eltonlaice/ilabhu/releases/latest)
 [![Go Report Card](https://goreportcard.com/badge/github.com/eltonlaice/ilabhu/control-plane)](https://goreportcard.com/report/github.com/eltonlaice/ilabhu/control-plane)
+[![Go Reference](https://pkg.go.dev/badge/github.com/eltonlaice/ilabhu/control-plane.svg)](https://pkg.go.dev/github.com/eltonlaice/ilabhu/control-plane)
+[![ilabhud image](https://ghcr-badge.egpl.dev/eltonlaice/ilabhud/latest_tag?label=ilabhud&trim=major&color=%23303030)](https://github.com/eltonlaice/ilabhu/pkgs/container/ilabhud)
 
 **Practice the full certification exam, on infrastructure you control.**
 
