@@ -1,0 +1,236 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/eltonlaice/ilabhu/main/docs/exam-schema.json
+
+schema_version: 1
+id: cka/full
+version: 1
+exam: CKA
+
+title: "CKA — Full simulation"
+summary: >
+  Full Certified Kubernetes Administrator simulation. Multi-domain, scored, time-bounded.
+  This is the v1 content drop covering four of five domains; Troubleshooting tasks land in
+  the follow-up release.
+
+difficulty: hard
+estimated_minutes: 90
+time_limit_minutes: 120
+passing_score: 66
+
+domains:
+  - name: Cluster Architecture, Installation & Configuration
+    weight: 25
+  - name: Workloads & Scheduling
+    weight: 15
+  - name: Services & Networking
+    weight: 20
+  - name: Storage
+    weight: 10
+  - name: Troubleshooting
+    weight: 30
+
+infrastructure:
+  ttl_minutes: 180
+  providers:
+    aws:
+      module: ./aws
+      inputs:
+        region: eu-west-1
+        instance_type: t3.medium
+    digitalocean:
+      module: ./digitalocean
+      inputs:
+        region: ams3
+        droplet_size: s-2vcpu-2gb
+    gcp:
+      module: ./gcp
+      inputs:
+        region: europe-west1
+        zone: europe-west1-b
+        machine_type: e2-medium
+    azure:
+      module: ./azure
+      inputs:
+        location: westeurope
+        vm_size: Standard_B2s
+    byo-hosts:
+      setup_script: ./byo-hosts/setup.sh
+      teardown_script: ./byo-hosts/teardown.sh
+      roles:
+        - name: node
+          count: 1
+          min_specs:
+            cpu: 2
+            ram_gb: 4
+            distro: "ubuntu>=22.04|rocky>=9|debian>=12"
+
+access:
+  kind: kubeconfig
+  output: kubeconfig
+
+instructions: |
+  This is the CKA full-simulation environment. The cluster is a single-node k3s
+  install in the user's chosen infrastructure. Multi-node scenarios (drain,
+  taints, affinity, DaemonSet) land in a follow-up release alongside the
+  multi-node Terraform modules.
+
+  The exam is **time-boxed at 120 minutes** and the passing score is **66%**,
+  matching the real CKA. Tasks below are weighted within their domain.
+
+  ## Domain coverage (v1)
+
+  | Domain | Tasks shipped | Status |
+  |---|---|---|
+  | Cluster Architecture, Installation & Configuration | RBAC binding | v1 |
+  | Workloads & Scheduling | Scale a Deployment | v1 |
+  | Services & Networking | Expose via NodePort | v1 |
+  | Storage | Multi-container with emptyDir | v1 |
+  | Troubleshooting | — | follow-up release |
+
+  Use `kubectl --kubeconfig <downloaded kubeconfig>` for every task. The
+  cluster does not have any pre-existing resources; every task starts from a
+  clean namespace.
+
+tasks:
+  # ---------------------------------------------------------------------
+  # Domain: Workloads & Scheduling
+  # ---------------------------------------------------------------------
+  - id: workloads-scale-deployment
+    title: Create and scale a Deployment
+    domain: Workloads & Scheduling
+    weight: 100
+    instructions: |
+      Create a Deployment in the `default` namespace with:
+
+      - **Name:** `web-app`
+      - **Image:** `nginx:1.25`
+      - **Replicas:** start at `3`
+
+      Then scale it to `5` replicas. All 5 replicas must be Ready before this
+      task is marked complete.
+
+      Hints:
+      - `kubectl create deployment` for the initial create
+      - `kubectl scale` to change the replica count
+    validations:
+      - kind: kubectl
+        args: ["get", "deployment", "web-app", "-n", "default", "-o", "jsonpath={.spec.replicas}"]
+        expect_equals: "5"
+      - kind: kubectl
+        args: ["get", "deployment", "web-app", "-n", "default", "-o", "jsonpath={.status.readyReplicas}"]
+        expect_equals: "5"
+      - kind: kubectl
+        args: ["get", "deployment", "web-app", "-n", "default", "-o", "jsonpath={.spec.template.spec.containers[0].image}"]
+        expect_equals: "nginx:1.25"
+
+  # ---------------------------------------------------------------------
+  # Domain: Services & Networking
+  # ---------------------------------------------------------------------
+  - id: services-nodeport-expose
+    title: Expose a Deployment via NodePort
+    domain: Services & Networking
+    weight: 100
+    instructions: |
+      Create a Deployment `web-svc` (`nginx:1.25`, 2 replicas) in the
+      `default` namespace, then expose it with a Service of type `NodePort`:
+
+      - **Service name:** `web-svc-nodeport`
+      - **Port:** `80` → **targetPort:** `80`
+      - **NodePort:** `30080`
+
+      The endpoint list must show at least two backend pod IPs, and an HTTP
+      GET on `http://<public_ip>:30080/` must return `200`.
+
+      Hints:
+      - `kubectl expose deployment` with `--type=NodePort --port=80 --target-port=80`
+      - Edit or recreate the Service to pin `nodePort: 30080`
+    validations:
+      - kind: kubectl
+        args: ["get", "svc", "web-svc-nodeport", "-n", "default", "-o", "jsonpath={.spec.type}"]
+        expect_equals: "NodePort"
+      - kind: kubectl
+        args: ["get", "svc", "web-svc-nodeport", "-n", "default", "-o", "jsonpath={.spec.ports[0].nodePort}"]
+        expect_equals: "30080"
+      - kind: kubectl
+        args: ["get", "endpoints", "web-svc-nodeport", "-n", "default", "-o", "jsonpath={.subsets[0].addresses[*].ip}"]
+        expect_regex: '^[0-9.]+ [0-9.]+( [0-9.]+)*$'
+      - kind: http
+        url: "http://{{public_ip}}:30080/"
+        expect_status: 200
+        expect_body_contains: "nginx"
+
+  # ---------------------------------------------------------------------
+  # Domain: Storage
+  # ---------------------------------------------------------------------
+  - id: storage-emptydir-shared
+    title: Two containers sharing an emptyDir volume
+    domain: Storage
+    weight: 100
+    instructions: |
+      Create a Pod `dual-container` in the `default` namespace with:
+
+      - Two containers, both `busybox:1.36`.
+      - A shared `emptyDir` volume mounted at `/shared` on both containers.
+      - The first container (`writer`) runs `sh -c 'echo ok > /shared/health && sleep 3600'`.
+      - The second container (`reader`) runs `sh -c 'cat /shared/health && sleep 3600'`.
+
+      The Pod must reach the `Running` phase with both containers ready.
+    validations:
+      - kind: kubectl
+        args: ["get", "pod", "dual-container", "-n", "default", "-o", "jsonpath={.status.phase}"]
+        expect_equals: "Running"
+      - kind: kubectl
+        args: ["get", "pod", "dual-container", "-n", "default", "-o", "jsonpath={.spec.containers[*].name}"]
+        expect_regex: '^(writer reader|reader writer)$'
+      - kind: kubectl
+        args: ["get", "pod", "dual-container", "-n", "default", "-o", "jsonpath={.spec.volumes[0].emptyDir}"]
+        expect_regex: '^\{\}?$'
+      - kind: kubectl
+        args: ["get", "pod", "dual-container", "-n", "default", "-o", "jsonpath={.spec.containers[0].volumeMounts[?(@.mountPath==\"/shared\")].mountPath}"]
+        expect_equals: "/shared"
+      - kind: kubectl
+        args: ["get", "pod", "dual-container", "-n", "default", "-o", "jsonpath={.status.containerStatuses[*].ready}"]
+        expect_equals: "true true"
+
+  # ---------------------------------------------------------------------
+  # Domain: Cluster Architecture, Installation & Configuration
+  # ---------------------------------------------------------------------
+  - id: cluster-rbac-pod-reader
+    title: Grant a ServiceAccount read-only access to Pods
+    domain: Cluster Architecture, Installation & Configuration
+    weight: 100
+    instructions: |
+      In the `default` namespace, set up RBAC so that a new ServiceAccount can
+      `get`, `list` and `watch` Pods (but nothing else):
+
+      - **ServiceAccount:** `audit-sa`
+      - **Role:** `pod-reader` with verbs `get,list,watch` on resource `pods`
+      - **RoleBinding:** `audit-can-read-pods` binding the Role to the SA
+
+      The final check uses `kubectl auth can-i` impersonating the SA:
+
+      ```sh
+      kubectl auth can-i list pods --as=system:serviceaccount:default:audit-sa
+      # must print: yes
+      ```
+    validations:
+      - kind: kubectl
+        args: ["get", "sa", "audit-sa", "-n", "default", "-o", "jsonpath={.metadata.name}"]
+        expect_equals: "audit-sa"
+      - kind: kubectl
+        args: ["get", "role", "pod-reader", "-n", "default", "-o", "jsonpath={.rules[0].resources[0]}"]
+        expect_equals: "pods"
+      - kind: kubectl
+        args: ["get", "role", "pod-reader", "-n", "default", "-o", "jsonpath={.rules[0].verbs}"]
+        expect_regex: '\[.*"get".*"list".*"watch".*\]|\[.*"list".*"get".*"watch".*\]|\[.*"watch".*"list".*"get".*\]|\[.*"get".*"watch".*"list".*\]|\[.*"list".*"watch".*"get".*\]|\[.*"watch".*"get".*"list".*\]'
+      - kind: kubectl
+        args: ["get", "rolebinding", "audit-can-read-pods", "-n", "default", "-o", "jsonpath={.subjects[0].name}"]
+        expect_equals: "audit-sa"
+      - kind: kubectl
+        args: ["get", "rolebinding", "audit-can-read-pods", "-n", "default", "-o", "jsonpath={.roleRef.name}"]
+        expect_equals: "pod-reader"
+      - kind: kubectl
+        args: ["auth", "can-i", "list", "pods", "--as=system:serviceaccount:default:audit-sa"]
+        expect_equals: "yes"
+      - kind: kubectl
+        args: ["auth", "can-i", "delete", "pods", "--as=system:serviceaccount:default:audit-sa"]
+        expect_equals: "no"

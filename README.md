@@ -84,7 +84,7 @@ For the IAM role + external-id setup, see [docs/byo-cloud-setup.md](docs/byo-clo
 - [x] Authoring docs (`docs/authoring-an-exam.md`, `docs/exam-schema.md`, `docs/exam-schema.json`)
 - [x] Troubleshooting guide
 - [ ] Multi-node Terraform modules (currently single-node k3s on every cloud)
-- [ ] Full CKA content (~17 tasks across all domains)
+- [ ] Full CKA content (~17 tasks across all domains) — _v1 shipped: 4 tasks across 4 of 5 domains (`exams/cka/full`); Troubleshooting + multi-node tasks in follow-up_
 - [ ] CKAD, CKS, RHCSA exam packs
 - [ ] Time-limit timer + weighted scoring UI
 - [x] `docker compose` self-host bundle (see [deploy/README.md](deploy/README.md))
