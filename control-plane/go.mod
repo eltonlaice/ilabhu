@@ -3,7 +3,7 @@ module github.com/eltonlaice/ilabhu/control-plane
 go 1.26.2
 
 require (
-	github.com/aws/aws-sdk-go-v2 v1.42.1
+	github.com/aws/aws-sdk-go-v2 v1.43.0
 	github.com/aws/aws-sdk-go-v2/config v1.32.27
 	github.com/aws/aws-sdk-go-v2/service/sts v1.43.5
 	github.com/google/uuid v1.6.0
