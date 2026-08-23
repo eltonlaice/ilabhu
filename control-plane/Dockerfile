@@ -6,7 +6,7 @@
 # ilabhud binary plus the runtime tools it shells out to (terraform,
 # kubectl, ssh, ssh-keygen, scp).
 
-FROM golang:1.26-bookworm AS build
+FROM golang:1.27-bookworm AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
